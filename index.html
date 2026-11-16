@@ -397,7 +397,8 @@ function seedLocal(){
 // ============================================================
 let uid = localStorage.getItem("hv_uid");
 if(!uid){ uid = "u" + Math.random().toString(36).slice(2,10); localStorage.setItem("hv_uid", uid); }
-// 雲端模式下，uid 改用 Firebase 匿名登入的 uid（見最下方 boot）
+// 雲端模式下：authUid = Firebase 匿名登入身分；uid = 我的倉鼠 ID（可用密碼在任何裝置找回）
+let authUid = null;
 let ALL = {};            // 所有倉鼠
 let viewing = uid;       // 現在正在看誰的籠子
 let editing = null;      // 擺設模式草稿 {furniture, sel}
@@ -943,18 +944,36 @@ function showOnboarding(){
     <div style="margin-top:10px"><b>選擇品種</b></div>
     <div class="breeds">${Object.entries(BREEDS).map(([k,b])=>`<div class="breed ${k===sel?"sel":""}" data-k="${k}"><div class="sw" style="background:${hex(b.body)}"></div><b>${b.name}</b><br><span class="small">${b.desc}</span></div>`).join("")}</div>
     <div><b>倉鼠的名字</b></div><input type="text" id="obName" maxlength="12" style="width:100%" placeholder="例如：豬妞">
-    <div class="btns" style="margin-top:12px"><button id="obGo">💗 迎接牠回家</button></div>`);
+    ${DB.mode==="cloud" ? `<div style="margin-top:10px"><b>找回密碼</b>（4–8 位，換手機或電腦時用來找回倉鼠，請記住）</div>
+      <input type="text" id="obPin" maxlength="8" inputmode="numeric" autocomplete="off" style="width:100%" placeholder="例如：0102">` : ""}
+    <div class="btns" style="margin-top:12px"><button id="obGo">💗 迎接牠回家</button>
+      ${DB.mode==="cloud" ? `<button class="ghost" id="obRecover">🔑 我已經有倉鼠了</button>` : ""}</div>`);
+  if(DB.mode==="cloud") $("#obRecover").onclick=showRecover;
   document.querySelectorAll(".breed").forEach(d=>d.onclick=()=>{ sel=d.dataset.k; document.querySelectorAll(".breed").forEach(x=>x.classList.toggle("sel",x===d)); });
   $("#obGo").onclick=()=>{
     const owner=$("#obOwner").value.trim().slice(0,10), name=$("#obName").value.trim().slice(0,12);
     if(!owner||!name){ toast("暱稱和倉鼠名字都要填喔"); return; }
+    const pin = DB.mode==="cloud" ? $("#obPin").value.trim() : "";
+    if(DB.mode==="cloud" && (pin.length<4 || pin.length>8)){ toast("找回密碼要 4–8 位"); return; }
+    if(DB.mode==="cloud") uid = "h" + Math.random().toString(36).slice(2,12);
     const t=now();
     const h={id:uid, owner, name, breed:sel, created:t, furniture:JSON.parse(JSON.stringify(DEFAULT_LAYOUT)),
              clean:{}, love:{tian:0,ren:0,wu:0,wo:0}, heartsReceived:0};
     Object.keys(h.furniture).forEach(k=>h.clean[k]=t);
-    DB.set(`hamsters/${uid}`, h);
-    DB.push("feed", {t, text:`🐣 ${owner} 迎接了新倉鼠「${name}」（${BREEDS[sel].name}）`});
-    onboardingOpen=false; closeModal(); toast(`歡迎「${esc(name)}」入住倉鼠村！`);
+    const done=()=>{
+      DB.push("feed", {t, text:`🐣 ${owner} 迎接了新倉鼠「${name}」（${BREEDS[sel].name}）`});
+      onboardingOpen=false; closeModal(); viewing=uid; firstLoad=true; startApp2(); renderPrompt();
+      toast(`歡迎「${esc(name)}」入住倉鼠村！${DB.mode==="cloud"?"<br>請記住找回密碼："+esc(pin):""}`, 6000);
+    };
+    if(DB.mode!=="cloud"){ DB.set(`hamsters/${uid}`, h); done(); return; }
+    $("#obGo").disabled=true;
+    const f=DB.fdb;
+    f.ref(`villagePins/${uid}`).set(pin)
+      .then(()=>f.ref(`villageOwners/${uid}/${authUid}`).set(pin))
+      .then(()=>f.ref(`villageUsers/${authUid}`).set(uid))
+      .then(()=>DB.ref(`hamsters/${uid}`).set(h))
+      .then(done)
+      .catch(e=>{ $("#obGo").disabled=false; console.error(e); toast("⚠️ 領養失敗："+esc(e.message)+"<br>請確認資料庫規則已更新", 6000); });
   };
 }
 
@@ -983,7 +1002,28 @@ DB.on("hamsters", v=>{
 // 8. 啟動：雲端模式需「匿名登入 + 班級通關碼」，由 Firebase 伺服器驗證
 // ============================================================
 function launch(){ viewing = uid; startApp(); startApp2(); startApp3(); }
-function askClassCode(){
+// 找回倉鼠：選自己的倉鼠 + 輸入密碼（由 Firebase 規則比對，看不到別人的密碼）
+function showRecover(){
+  const list=Object.values(ALL).filter(h=>h&&h.name).sort((a,b)=>a.name.localeCompare(b.name,"zh-Hant"));
+  openModal(`<h2>🔑 找回我的倉鼠</h2>
+    <div class="small">換了手機、電腦或瀏覽器時使用。</div>
+    <div style="margin-top:10px"><b>我的倉鼠</b></div>
+    <select id="rcSel" style="width:100%">${list.map(h=>`<option value="${esc(h.id)}">${esc(h.name)}（主人 ${esc(h.owner)}）</option>`).join("")}</select>
+    <div style="margin-top:10px"><b>找回密碼</b></div>
+    <input type="text" id="rcPin" maxlength="8" inputmode="numeric" autocomplete="off" style="width:100%">
+    <div class="btns" style="margin-top:12px"><button id="rcGo">找回</button><button class="ghost" id="rcBack">返回領養</button></div>`);
+  $("#rcBack").onclick=()=>{ onboardingOpen=false; showOnboarding(); };
+  $("#rcGo").onclick=()=>{
+    const hid=$("#rcSel").value, pin=$("#rcPin").value.trim(); if(!hid||!pin) return;
+    $("#rcGo").disabled=true;
+    const f=DB.fdb;
+    f.ref(`villageOwners/${hid}/${authUid}`).set(pin)
+      .then(()=>f.ref(`villageUsers/${authUid}`).set(hid))
+      .then(()=>{ uid=hid; onboardingOpen=false; closeModal(); startApp2(); renderPrompt(); visit(uid); toast(`歡迎回來！「${esc(ALL[uid]?.name||"")}」一直在等你 💗`); })
+      .catch(()=>{ $("#rcGo").disabled=false; toast("密碼不對喔，再試一次"); });
+  };
+}
+function askClassCode(next){
   openModal(`<h2>🔑 輸入班級通關碼</h2>
     <div class="small">倉鼠村只開放給修課同學。請輸入老師或報告者公布的通關碼。</div>
     <input type="text" id="codeIn" maxlength="30" style="width:100%;margin-top:10px" placeholder="通關碼" autocomplete="off">
@@ -991,7 +1031,7 @@ function askClassCode(){
   const go=()=>{
     const code=$("#codeIn").value.trim(); if(!code) return;
     $("#codeGo").disabled=true;
-    DB.ref(`members/${uid}`).set(code).then(()=>{ closeModal(); launch(); })
+    DB.ref(`members/${authUid}`).set(code).then(()=>{ closeModal(); next(); })
       .catch(()=>{ $("#codeGo").disabled=false; toast("通關碼不對喔，再確認一次 🙂"); });
   };
   $("#codeGo").onclick=go; $("#codeIn").onkeydown=e=>{ if(e.key==="Enter") go(); };
@@ -1002,9 +1042,12 @@ if(DB.mode==="cloud"){
   let booted=false;
   firebase.auth().onAuthStateChanged(user=>{
     if(!user || booted) return; booted=true;
-    uid = user.uid;
-    DB.ref(`members/${uid}`).once("value").then(s=>{ if(s.exists()) launch(); else askClassCode(); })
-      .catch(()=>askClassCode());
+    authUid = user.uid;
+    uid = "pending_" + authUid;   // 還沒有倉鼠時的暫時 ID
+    const go=()=>DB.fdb.ref(`villageUsers/${authUid}`).once("value")
+      .then(s=>{ if(s.val()) uid=s.val(); launch(); }).catch(()=>launch());
+    DB.ref(`members/${authUid}`).once("value").then(s=>{ if(s.exists()) go(); else askClassCode(go); })
+      .catch(()=>askClassCode(go));
   });
 }else launch();
 </script>
