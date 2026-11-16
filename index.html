@@ -185,6 +185,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script>
 // ============================================================
 // 0. 設定：把 Firebase 專案設定貼在這裡（見《部署教學》）
@@ -340,7 +341,7 @@ const DB = (() => {
     fdb.ref(".info/serverTimeOffset").on("value", s => serverOffset = s.val()||0);
     const fail = e => { console.error(e); toast("⚠️ 資料庫寫入失敗："+esc(e.message||e)); };
     return {
-      mode,
+      mode, fdb, ref,
       on(p, cb){ ref(p).on("value", s => cb(s.val()), fail); },
       onLast(p, n, cb){ ref(p).orderByChild("t").limitToLast(n).on("value", s => { const a=[]; s.forEach(c=>{a.push(c.val())}); cb(a); }, fail); },
       set(p, v){ return ref(p).set(v).catch(fail); },
@@ -396,6 +397,7 @@ function seedLocal(){
 // ============================================================
 let uid = localStorage.getItem("hv_uid");
 if(!uid){ uid = "u" + Math.random().toString(36).slice(2,10); localStorage.setItem("hv_uid", uid); }
+// 雲端模式下，uid 改用 Firebase 匿名登入的 uid（見最下方 boot）
 let ALL = {};            // 所有倉鼠
 let viewing = uid;       // 現在正在看誰的籠子
 let editing = null;      // 擺設模式草稿 {furniture, sel}
@@ -890,14 +892,13 @@ $("#tourBtn").onclick=()=>{
   toast("每 12 秒拜訪一戶，按「回我家」或村莊卡片即可停止");
 };
 
+function startApp(){
 // ---- 愛的牆 ----
 DB.onLast("feed", 50, arr=>{
   $("#feed").innerHTML = (arr||[]).slice().reverse().map(e=>`<li>${esc(e.text)}<span class="ago">${ago(e.t)}</span></li>`).join("") || `<li class="small">還沒有動態</li>`;
 });
 
 // ---- 我：反思日記 ----
-const todayPrompt = () => { const d=taipei(now()).day; return PROMPTS[hashStr(d+uid)%PROMPTS.length]; };
-function renderPrompt(){ const [dim,p]=todayPrompt(); $("#prompt").innerHTML=`<span class="pill">今日｜${dim}</span> ${esc(p)}`; }
 renderPrompt();
 $("#diaryBtn").onclick=()=>{
   const text=$("#diaryText").value.trim().slice(0,200); if(!text){ toast("寫一句話就好 🙂"); return; }
@@ -908,12 +909,17 @@ $("#diaryBtn").onclick=()=>{
   if($("#diaryShare").checked && me) DB.push("feed", {t, text:`📔 ${me.owner} 的反思：「${text.slice(0,60)}」`});
   $("#diaryText").value="";
 };
+}  // end part 1 of startApp
+const todayPrompt = () => { const d=taipei(now()).day; return PROMPTS[hashStr(d+uid)%PROMPTS.length]; };
+function renderPrompt(){ const [dim,p]=todayPrompt(); $("#prompt").innerHTML=`<span class="pill">今日｜${dim}</span> ${esc(p)}`; }
+function startApp2(){
 DB.onLast(`diary/${uid}`, 20, arr=>{
   $("#diaryList").innerHTML=(arr||[]).slice().reverse().map(e=>`<li><span class="small">${esc(e.prompt)}</span><br>${esc(e.text)}<span class="ago">${ago(e.t)}</span></li>`).join("");
 });
 DB.onLast(`hearts/${uid}`, 30, arr=>{
   $("#heartList").innerHTML=(arr||[]).slice().reverse().map(e=>`<li>💗 <b>${esc(e.fromName)}</b>${e.msg?`：${esc(e.msg)}`:""}<span class="ago">${ago(e.t)}</span></li>`).join("") || `<li class="small">還沒有收到愛心。先去村莊拜訪別人吧！</li>`;
 });
+}
 
 // ---- 設定 ----
 $("#nightSim").checked = nightSim;
@@ -956,6 +962,7 @@ function showOnboarding(){
 // 7. 資料訂閱 → 畫面
 // ============================================================
 let firstLoad = true, hadMe = false;
+function startApp3(){
 DB.on("hamsters", v=>{
   ALL = v || {};
   for(const k in ALL){ if(ALL[k] && !ALL[k].id) ALL[k].id = k; }
@@ -970,8 +977,36 @@ DB.on("hamsters", v=>{
   }
   if($("#tab-village").classList.contains("on")) renderVillage();
 });
+}
 
+// ============================================================
+// 8. 啟動：雲端模式需「匿名登入 + 班級通關碼」，由 Firebase 伺服器驗證
+// ============================================================
+function launch(){ viewing = uid; startApp(); startApp2(); startApp3(); }
+function askClassCode(){
+  openModal(`<h2>🔑 輸入班級通關碼</h2>
+    <div class="small">倉鼠村只開放給修課同學。請輸入老師或報告者公布的通關碼。</div>
+    <input type="text" id="codeIn" maxlength="30" style="width:100%;margin-top:10px" placeholder="通關碼" autocomplete="off">
+    <div class="btns" style="margin-top:10px"><button id="codeGo">進入倉鼠村</button></div>`);
+  const go=()=>{
+    const code=$("#codeIn").value.trim(); if(!code) return;
+    $("#codeGo").disabled=true;
+    DB.ref(`members/${uid}`).set(code).then(()=>{ closeModal(); launch(); })
+      .catch(()=>{ $("#codeGo").disabled=false; toast("通關碼不對喔，再確認一次 🙂"); });
+  };
+  $("#codeGo").onclick=go; $("#codeIn").onkeydown=e=>{ if(e.key==="Enter") go(); };
+}
 resize(); updateSky(now()); requestAnimationFrame(animate);
+if(DB.mode==="cloud"){
+  firebase.auth().signInAnonymously().catch(e=>toast("⚠️ 登入失敗："+esc(e.message)+"<br>請確認 Firebase 已啟用「匿名」登入", 8000));
+  let booted=false;
+  firebase.auth().onAuthStateChanged(user=>{
+    if(!user || booted) return; booted=true;
+    uid = user.uid;
+    DB.ref(`members/${uid}`).once("value").then(s=>{ if(s.exists()) launch(); else askClassCode(); })
+      .catch(()=>askClassCode());
+  });
+}else launch();
 </script>
 </body>
 </html>
