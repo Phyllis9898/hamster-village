@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>🐹 倉鼠村 · 愛的四重奏</title>
+<style>
+  :root{
+    --bg:#fdf8ef; --ink:#4a3b2a; --card:#fffdf8; --line:#eadcc2;
+    --tian:#5b8def; --ren:#e0547a; --wu:#3fa66b; --wo:#d99a2b;
+    --btn:#2ca02c; --btn2:#b5895a;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"PingFang TC","Microsoft JhengHei","Noto Sans TC",sans-serif;}
+  body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px));}
+  header{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:10px;
+    padding:calc(8px + env(safe-area-inset-top,0px)) 12px 8px;background:#fff8ea;border-bottom:2px solid var(--line);}
+  .brand{font-weight:800;font-size:1.05rem;flex:1;line-height:1.2}
+  .brand small{display:block;font-weight:500;font-size:.72rem;color:#a08a6a}
+  .pill{font-size:.75rem;padding:3px 8px;border-radius:12px;background:#f1e6cf;white-space:nowrap}
+  .pill.cloud{background:#d9f2e1;color:#1f6e3a}
+  .pill.local{background:#fde7d6;color:#9a5a20}
+  main{max-width:860px;margin:0 auto;padding:10px;}
+  .tab{display:none}.tab.on{display:block}
+  h2{font-size:1.05rem;margin:6px 0 8px}
+  .card{background:var(--card);border:2px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+  #view{width:100%;aspect-ratio:3/2;border:3px solid #3a2f22;border-radius:12px;overflow:hidden;
+    background:#e8dcc3;touch-action:none;position:relative}
+  @media (max-width:600px){ #view{aspect-ratio:4/3} }
+  #view canvas{display:block;width:100%;height:100%}
+  #viewHint{position:absolute;left:8px;bottom:6px;font-size:.7rem;color:#fff;background:#0006;padding:2px 6px;border-radius:6px;pointer-events:none}
+  .cageHead{display:flex;align-items:center;gap:8px;margin:2px 0 8px;flex-wrap:wrap}
+  .cageHead .nm{font-size:1.15rem;font-weight:800}
+  .cageHead .sub{font-size:.8rem;color:#998}
+  .status{display:flex;flex-wrap:wrap;gap:12px;font-size:.9rem;margin:8px 0}
+  .status b{color:#b07a2a}
+  .btns{display:flex;flex-wrap:wrap;gap:8px}
+  button{background:var(--btn);color:#fff;border:none;border-radius:10px;padding:9px 14px;
+    font-size:.92rem;font-weight:700;cursor:pointer;font-family:inherit}
+  button.sec{background:var(--btn2)}
+  button.ghost{background:#efe4cf;color:var(--ink)}
+  button.pink{background:var(--ren)}
+  button:disabled{opacity:.45}
+  .chip{display:inline-flex;align-items:center;gap:4px;padding:7px 10px;border-radius:18px;border:2px solid var(--line);
+    background:#fff;font-size:.85rem;cursor:pointer;margin:3px;color:var(--ink);font-weight:600}
+  .chip.placed{background:#fff3d6;border-color:#e2c27a}
+  .chip.sel{border-color:#2ca02c;box-shadow:0 0 0 2px #2ca02c55}
+  .chip.del.sel{border-color:#d33;box-shadow:0 0 0 2px #d3333355}
+  .quartet{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:6px}
+  .q{border-radius:10px;padding:6px;text-align:center;color:#fff;font-size:.78rem}
+  .q b{display:block;font-size:1.25rem}
+  .q.tian{background:var(--tian)}.q.ren{background:var(--ren)}.q.wu{background:var(--wu)}.q.wo{background:var(--wo)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .hcard{background:#fff;border:2px solid var(--line);border-radius:12px;padding:10px;cursor:pointer;position:relative}
+  .hcard.me{border-color:#e2c27a;background:#fff8e6}
+  .avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.3rem;border:2px solid #0002}
+  .hcard .nm{font-weight:800;margin-top:6px}
+  .hcard .meta{font-size:.74rem;color:#998;line-height:1.5}
+  .hcard .st{font-size:.8rem;margin-top:4px}
+  .hcard .hearts{position:absolute;right:8px;top:8px;font-size:.8rem;color:var(--ren);font-weight:700}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  input[type=text],textarea,select{font-family:inherit;font-size:.95rem;padding:8px 10px;border-radius:10px;border:2px solid var(--line);background:#fff;color:var(--ink)}
+  textarea{width:100%;min-height:80px;resize:vertical}
+  .feed{list-style:none;margin:0;padding:0}
+  .feed li{padding:9px 4px;border-bottom:1px dashed var(--line);font-size:.9rem;line-height:1.5}
+  .feed .ago{color:#b5a58a;font-size:.72rem;margin-left:6px}
+  .dirt{height:8px;border-radius:4px;background:#eee;overflow:hidden;flex:1;min-width:60px}
+  .dirt i{display:block;height:100%;background:linear-gradient(90deg,#9bd39b,#d9b45a,#8a5a2b)}
+  nav#tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:flex;background:#fff8ea;border-top:2px solid var(--line);
+    padding-bottom:env(safe-area-inset-bottom,0px)}
+  nav#tabs button{flex:1;background:none;color:#a08a6a;border-radius:0;padding:8px 0 10px;font-size:.78rem}
+  nav#tabs button span{display:block;font-size:1.3rem}
+  nav#tabs button.on{color:var(--ink)}
+  #modal{position:fixed;inset:0;background:#0007;z-index:20;display:flex;align-items:center;justify-content:center;padding:14px}
+  #modal[hidden]{display:none}
+  #modal .box{background:var(--card);border-radius:16px;padding:16px;max-width:520px;width:100%;max-height:88vh;overflow:auto}
+  .breeds{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;margin:8px 0}
+  .breed{border:2px solid var(--line);border-radius:10px;padding:8px;text-align:center;cursor:pointer;font-size:.8rem;background:#fff}
+  .breed.sel{border-color:#2ca02c;box-shadow:0 0 0 2px #2ca02c55}
+  .breed .sw{width:34px;height:34px;border-radius:50%;margin:0 auto 4px;border:2px solid #0002}
+  #toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);
+    background:#3a2f22;color:#fff;padding:10px 14px;border-radius:12px;font-size:.9rem;max-width:90vw;z-index:30;
+    opacity:0;transition:opacity .3s;pointer-events:none;text-align:center;line-height:1.5}
+  #toast.on{opacity:1}
+  .small{font-size:.78rem;color:#998;line-height:1.6}
+  .philo{font-size:.82rem;line-height:1.7}
+  .philo b{font-weight:800}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">🐹 倉鼠村<small>愛的四重奏 · 天・人・物・我</small></div>
+  <div class="pill" id="sky">—</div>
+  <div class="pill" id="net">—</div>
+</header>
+
+<main>
+  <!-- ========== 籠子 ========== -->
+  <section id="tab-cage" class="tab on">
+    <div class="cageHead">
+      <div class="avatar" id="cageAvatar">🐹</div>
+      <div><div class="nm" id="cageName">—</div><div class="sub" id="cageSub">—</div></div>
+    </div>
+    <div id="view"><div id="viewHint">拖曳旋轉 · 滾輪/雙指縮放</div></div>
+    <div class="status">
+      <div>🏃 <b id="stBeh">—</b></div>
+      <div>🕐 <span id="stMode">—</span></div>
+      <div>💗 <span id="stHearts">0</span></div>
+    </div>
+    <div class="btns" id="actions"></div>
+    <div class="card" id="editBar" hidden style="margin-top:10px">
+      <div class="small">選一件家具，再點地板放置；選「移除」後點家具即可收起。</div>
+      <div id="chips"></div>
+      <div class="btns" style="margin-top:6px"><button id="editDone">✔ 完成擺設</button><button class="ghost" id="editCancel">取消</button></div>
+    </div>
+    <div class="card" style="margin-top:10px">
+      <div class="row" style="justify-content:space-between"><b>愛的四重奏</b><span class="small" id="qOwner"></span></div>
+      <div class="quartet" id="quartet"></div>
+    </div>
+  </section>
+
+  <!-- ========== 村莊 ========== -->
+  <section id="tab-village" class="tab">
+    <h2>🏘️ 倉鼠村</h2>
+    <div class="small" id="villageStats"></div>
+    <div class="row" style="margin:8px 0">
+      <input type="text" id="search" placeholder="搜尋倉鼠或主人" style="flex:1;min-width:140px">
+      <select id="sort"><option value="hearts">愛心最多</option><option value="love">愛的總分</option><option value="new">最新加入</option></select>
+      <button class="sec" id="tourBtn">▶ 自動巡禮</button>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <!-- ========== 愛的牆 ========== -->
+  <section id="tab-wall" class="tab">
+    <h2>💌 愛的牆</h2>
+    <div class="small">全村的愛心、照顧與反思，都會出現在這裡。</div>
+    <div class="card"><ul class="feed" id="feed"></ul></div>
+  </section>
+
+  <!-- ========== 我 ========== -->
+  <section id="tab-me" class="tab">
+    <h2>📔 我：今日反思</h2>
+    <div class="card">
+      <div id="prompt" style="font-weight:700;margin-bottom:6px"></div>
+      <textarea id="diaryText" maxlength="200" placeholder="寫下幾句話就好（最多 200 字）"></textarea>
+      <div class="row" style="margin-top:6px;justify-content:space-between">
+        <label class="small"><input type="checkbox" id="diaryShare"> 分享到愛的牆</label>
+        <button id="diaryBtn">寫下</button>
+      </div>
+      <ul class="feed" id="diaryList" style="margin-top:8px"></ul>
+    </div>
+    <h2>💗 收到的愛心</h2>
+    <div class="card"><ul class="feed" id="heartList"></ul></div>
+    <h2>🧭 天・人・物・我</h2>
+    <div class="card philo">
+      <div><b style="color:var(--tian)">天｜尊重</b>：倉鼠是夜行動物，這裡的晝夜跟著台灣真實時間走。牠睡覺時你無法餵食或摸摸——愛，是順著牠的天性。</div>
+      <div><b style="color:var(--ren)">人｜關懷</b>：拜訪同學的籠子、送一顆愛心或一句話、幫忙餵食。愛在人與人之間流動。</div>
+      <div><b style="color:var(--wu)">物｜珍惜</b>：家具會慢慢變髒，太髒倉鼠就不想用。打掃不是苦差事，是讓「物」好好陪伴生命。</div>
+      <div><b style="color:var(--wo)">我｜覺察</b>：每天回答一題反思。懂得照顧自己的人，才有力氣愛別人。</div>
+      <div class="small" style="margin-top:6px">分數只是提醒，不是目的：吵醒倉鼠不會加分、重複送愛心也不會。</div>
+    </div>
+    <h2>⚙️ 設定</h2>
+    <div class="card">
+      <div class="row"><label><input type="checkbox" id="nightSim"> 🌙 夜晚模擬（白天上課示範用，只影響你的畫面）</label></div>
+      <div class="btns" style="margin-top:8px">
+        <button class="ghost" id="renameBtn">✏️ 幫倉鼠改名</button>
+        <button class="ghost" id="switchId">🔄 切換測試身分</button>
+      </div>
+      <div class="small" id="modeNote" style="margin-top:8px"></div>
+    </div>
+  </section>
+</main>
+
+<nav id="tabs">
+  <button data-tab="cage" class="on"><span>🏠</span>籠子</button>
+  <button data-tab="village"><span>🏘️</span>村莊</button>
+  <button data-tab="wall"><span>💌</span>愛的牆</button>
+  <button data-tab="me"><span>📔</span>我</button>
+</nav>
+<div id="modal" hidden><div class="box" id="modalBox"></div></div>
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+// ============================================================
+// 0. 設定：把 Firebase 專案設定貼在這裡（見《部署教學》）
+//    留 null → 自動進入「單機示範模式」（資料存在瀏覽器，附 12 隻示範倉鼠）
+// ============================================================
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDtcRfhB9uaV8FC8kGqF9eUKjWZdbWP7ds",
+  authDomain: "hamster-village-7c620.firebaseapp.com",
+  databaseURL: "https://hamster-village-7c620-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "hamster-village-7c620",
+  storageBucket: "hamster-village-7c620.firebasestorage.app",
+  messagingSenderId: "610050483156",
+  appId: "1:610050483156:web:e180681d83404e8bf0ec41"
+};
+/* 範例：
+const FIREBASE_CONFIG = {
+  apiKey: "AIza....",
+  authDomain: "hamster-village.firebaseapp.com",
+  databaseURL: "https://hamster-village-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "hamster-village",
+  appId: "1:123:web:abc"
+};
+*/
+const ROOT = "hamsterVillage";     // 資料庫根節點
+const SLOT_MS = 15000;              // 每 15 秒換一次行為
+const DIRTY_MS = 2*24*3600*1000;    // 家具 2 天會完全變髒
+const CD_MS = 10*60*1000;           // 餵食/摸摸冷卻 10 分鐘
+
+// ============================================================
+// 1. 小工具
+// ============================================================
+const $ = s => document.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function hashStr(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619)>>>0; } return h; }
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+let serverOffset = 0;
+const now = () => Date.now() + serverOffset;
+function taipei(t){ const d=new Date(t+8*3600e3); return {h:d.getUTCHours(), m:d.getUTCMinutes(), day:d.toISOString().slice(0,10)}; }
+let nightSim = localStorage.getItem("hv_night")==="1";
+function skyHour(t){ if(nightSim) return 23; const p=taipei(t); return p.h + p.m/60; }
+const isNight = t => { const h=skyHour(t); return h>=19 || h<6; };
+function ago(t){ const s=Math.max(0,(now()-t)/1000); if(s<60) return "剛剛"; if(s<3600) return Math.floor(s/60)+" 分鐘前"; if(s<86400) return Math.floor(s/3600)+" 小時前"; return Math.floor(s/86400)+" 天前"; }
+let toastTimer=null;
+function toast(msg, ms=3200){ const el=$("#toast"); el.innerHTML=msg; el.classList.add("on"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove("on"),ms); }
+function openModal(html){ $("#modalBox").innerHTML=html; $("#modal").hidden=false; }
+function closeModal(){ $("#modal").hidden=true; }
+$("#modal").addEventListener("click", e=>{ if(e.target.id==="modal" && ALL[uid]) closeModal(); });
+const hex = n => "#"+n.toString(16).padStart(6,"0");
+
+// ============================================================
+// 2. 資料：倉鼠品種、家具、行為
+// ============================================================
+const BREEDS = {
+  golden:   {name:"黃金鼠",  body:0xe3a457, belly:0xfbeedd, ear:0xc98a3e, size:1.25, desc:"體型最大、獨來獨往"},
+  pudding:  {name:"布丁鼠",  body:0xf2cf6e, belly:0xfff6dc, ear:0xd9a845, size:0.9,  desc:"奶黃色、愛吃"},
+  milktea:  {name:"奶茶鼠",  body:0xd2ab84, belly:0xf8ecdf, ear:0xa9805a, size:0.9,  desc:"溫和親人"},
+  dwarf:    {name:"三線鼠",  body:0xbfbcb6, belly:0xf7f4ee, ear:0x8d8a85, size:0.9,  stripe:0x4a4440, desc:"背上一條黑線"},
+  silver:   {name:"銀狐鼠",  body:0xeeeef4, belly:0xffffff, ear:0xc9c9d6, size:0.9,  stripe:0x9c9cab, desc:"白底銀灰線"},
+  purple:   {name:"紫倉鼠",  body:0xb4a8c8, belly:0xf1edf6, ear:0x8f80a8, size:0.9,  stripe:0x5e5170, desc:"灰紫色、安靜"},
+  robo:     {name:"老公公鼠",body:0xe6c99a, belly:0xffffff, ear:0xc9a670, size:0.72, brow:true, desc:"最小隻、白眉毛"},
+};
+const FURN = {
+  nest:    {label:"小窩",     icon:"🏠", r:4.0, spot:[0,5.2], inner:[0,0],   clean:"整理小窩"},
+  wheel:   {label:"跑輪",     icon:"🎡", r:6.2, spot:[0,6.6], inner:[0,0.5], clean:"擦跑輪"},
+  bowl:    {label:"飼料盆",   icon:"🥣", r:2.8, spot:[0,4.6],                clean:"洗飼料盆"},
+  bath:    {label:"浴室",     icon:"🛁", r:3.6, spot:[0,5.0], inner:[0,0],   clean:"換浴沙"},
+  toilet:  {label:"廁所",     icon:"🚽", r:2.8, spot:[0,4.4], inner:[0,0],   clean:"清廁所"},
+  platform:{label:"平台水壺", icon:"💧", r:4.6, spot:[0,4.6],                clean:"換飲用水"},
+  toy:     {label:"打碟玩具", icon:"🎲", r:3.2, spot:[0,4.4],                clean:"擦玩具"},
+};
+const DEFAULT_LAYOUT = {platform:[-16,-11], nest:[-5,-11], wheel:[13,-9], bowl:[-7,7], toilet:[-19,9], bath:[3,8], toy:[16,7]};
+// 行為：item=要去的家具；inner=走進家具裡；anim=動作；w=權重
+const BEHAV = {
+  "跑滾輪":{item:"wheel",  inner:true, anim:"run",   w:5},
+  "吃東西":{item:"bowl",               anim:"eat",   w:3},
+  "喝水":  {item:"platform",           anim:"drink", w:2},
+  "洗沙浴":{item:"bath",   inner:true, anim:"roll",  w:2},
+  "上廁所":{item:"toilet", inner:true, anim:"still", w:1},
+  "打碟":  {item:"toy",                anim:"spin",  w:2},
+  "藏食物":{item:"nest",   inner:true, anim:"still", w:1},
+  "理毛":  {anim:"groom", w:2},
+  "閒晃":  {anim:"walk",  w:3},
+  "發呆":  {anim:"still", w:1},
+};
+const DAY_OK = ["喝水","上廁所","吃東西","理毛"];   // 白天偶爾醒來只做這些
+const PROMPTS = [
+  ["天","今天的天空是什麼樣子？你有停下來看一眼嗎？"],
+  ["天","有什麼事是你今天決定「順其自然」的？"],
+  ["人","今天你想感謝的一個人是誰？為什麼？"],
+  ["人","今天有誰讓你感受到被在乎？"],
+  ["物","今天你用了什麼東西，想對它說聲謝謝？"],
+  ["物","有沒有一樣舊東西，你決定再多珍惜它一陣子？"],
+  ["我","今天你用什麼方式照顧了自己？"],
+  ["我","你從你的倉鼠身上，學到了什麼？"],
+];
+const HEART_PRESETS = ["你的倉鼠好可愛！","謝謝你把牠照顧得這麼好","今天也辛苦了，一起加油","牠讓我想起我家的毛孩"];
+
+function dirtOf(h, item, t=now()){
+  const last = (h.clean && h.clean[item]) || h.created || t;
+  return Math.max(0, Math.min(1, (t-last)/DIRTY_MS));
+}
+function furnPos(h, item){ return h.furniture && h.furniture[item]; }
+function spotOf(h, item){ const p=furnPos(h,item), f=FURN[item]; return [p[0]+f.spot[0], p[1]+f.spot[1]]; }
+function innerOf(h, item){ const p=furnPos(h,item), f=FURN[item]; return [p[0]+f.inner[0], p[1]+f.inner[1]]; }
+const clampX = x => Math.max(-21, Math.min(21, x));
+const clampZ = z => Math.max(-13.5, Math.min(13.5, z));
+
+// 決定某隻倉鼠「此刻」在做什麼 —— 由 (倉鼠 id, 時段) 當亂數種子：
+// 所有同學看到的是同一個行為，不需要伺服器同步動畫。
+const overrides = {};
+function decide(h, t=now()){
+  const ov = overrides[h.id];
+  if(ov && ov.until > t) return ov.state;
+  const slot = Math.floor(t / SLOT_MS);
+  const R = mulberry32((hashStr(h.id) ^ Math.imul(slot, 2654435761)) >>> 0);
+  const night = isNight(t);
+  const awake = R() < (night ? 0.88 : 0.10);
+  const fur = h.furniture || {};
+  if(!awake){
+    if(fur.nest) return {key:"sleep"+slot, beh:"睡覺", mode:"sleep", anim:"sleep", item:"nest", inner:true,
+                         approach:spotOf(h,"nest"), pt:innerOf(h,"nest")};
+    return {key:"sleep"+slot, beh:"睡覺（沒有窩…）", mode:"sleep", anim:"sleep", pt:[-20,-12.5]};
+  }
+  let pool = Object.entries(BEHAV).filter(([k,b]) => !b.item || (fur[b.item] && dirtOf(h,b.item,t) < 0.85));
+  if(!night) pool = pool.filter(([k]) => DAY_OK.includes(k));
+  if(!pool.length) pool = [["發呆", BEHAV["發呆"]]];
+  const total = pool.reduce((s,[,b])=>s+b.w, 0);
+  let r = R()*total, pick = pool[0];
+  for(const p of pool){ r -= p[1].w; if(r<=0){ pick=p; break; } }
+  const [beh, b] = pick;
+  const st = {key:beh+slot, beh, mode: night?"active":"daywake", anim:b.anim, item:b.item};
+  if(b.item){
+    if(b.inner){ st.approach = spotOf(h,b.item); st.pt = innerOf(h,b.item); st.inner=true; }
+    else { st.pt = spotOf(h,b.item); st.face = Math.PI; }
+  }else{
+    st.pt = [clampX(-20+R()*40), clampZ(-12+R()*24)];
+  }
+  return st;
+}
+const MODE_LABEL = {active:"🌙 夜間活動中", daywake:"☀️ 白天短暫醒來", sleep:"💤 睡覺中"};
+
+// ============================================================
+// 3. 資料庫層：Firebase（雲端）或 localStorage（單機示範）
+// ============================================================
+const DB = (() => {
+  let fdb = null, mode = "local";
+  if(FIREBASE_CONFIG && window.firebase){
+    try{ firebase.initializeApp(FIREBASE_CONFIG); fdb = firebase.database(); mode = "cloud"; }
+    catch(e){ console.warn("Firebase 初始化失敗，改用單機模式", e); }
+  }
+  const ref = p => fdb.ref(ROOT + "/" + p);
+  if(mode==="cloud"){
+    fdb.ref(".info/serverTimeOffset").on("value", s => serverOffset = s.val()||0);
+    const fail = e => { console.error(e); toast("⚠️ 資料庫寫入失敗："+esc(e.message||e)); };
+    return {
+      mode,
+      on(p, cb){ ref(p).on("value", s => cb(s.val()), fail); },
+      onLast(p, n, cb){ ref(p).orderByChild("t").limitToLast(n).on("value", s => { const a=[]; s.forEach(c=>{a.push(c.val())}); cb(a); }, fail); },
+      set(p, v){ return ref(p).set(v).catch(fail); },
+      update(p, o){ return ref(p).update(o).catch(fail); },
+      push(p, v){ return ref(p).push(v).catch(fail); },
+      inc(p, n=1){ return ref(p).set(firebase.database.ServerValue.increment(n)).catch(fail); },
+    };
+  }
+  // ---- 單機模式 ----
+  const KEY = "hv_local_v1";
+  let data = null;
+  try{ data = JSON.parse(localStorage.getItem(KEY)); }catch(e){}
+  if(!data) data = seedLocal();
+  const subs = [];
+  const parts = p => p.split("/").filter(Boolean);
+  function get(p){ let o=data; for(const k of parts(p)){ if(o==null) return null; o=o[k]; } return o ?? null; }
+  function put(p, v){ const ks=parts(p); let o=data; ks.slice(0,-1).forEach(k=>{ if(typeof o[k]!=="object"||o[k]===null) o[k]={}; o=o[k]; }); if(v===null) delete o[ks.at(-1)]; else o[ks.at(-1)]=v; }
+  function commit(){ try{ localStorage.setItem(KEY, JSON.stringify(data)); }catch(e){} emit(); }
+  function emit(){ subs.forEach(s => s.fire()); }
+  function lastN(p, n){ const o=get(p)||{}; return Object.values(o).sort((a,b)=>(a.t||0)-(b.t||0)).slice(-n); }
+  window.addEventListener("storage", e => { if(e.key===KEY){ try{ data=JSON.parse(e.newValue)||data; }catch(_){} emit(); } });
+  return {
+    mode,
+    on(p, cb){ const s={fire:()=>cb(JSON.parse(JSON.stringify(get(p))))}; subs.push(s); setTimeout(s.fire,0); },
+    onLast(p, n, cb){ const s={fire:()=>cb(JSON.parse(JSON.stringify(lastN(p,n))))}; subs.push(s); setTimeout(s.fire,0); },
+    set(p, v){ put(p, JSON.parse(JSON.stringify(v))); commit(); return Promise.resolve(); },
+    update(p, o){ for(const k in o) put(p+"/"+k, o[k]); commit(); return Promise.resolve(); },
+    push(p, v){ put(p+"/"+now().toString(36)+Math.random().toString(36).slice(2,6), v); commit(); return Promise.resolve(); },
+    inc(p, n=1){ put(p, (get(p)||0)+n); commit(); return Promise.resolve(); },
+  };
+})();
+
+function seedLocal(){
+  const names=[["麻糬","小安"],["湯圓","阿哲"],["芋圓","婷婷"],["花生","家豪"],["黑糖","佩珊"],["豆花","冠宇"],
+               ["年糕","思妤"],["可可","承恩"],["雪球","雅筑"],["小米","柏翰"],["奶酪","宜蓁"],["饅頭","子軒"]];
+  const keys=Object.keys(BREEDS), t=Date.now();
+  const d={hamsters:{}, feed:{}, hearts:{}};
+  names.forEach(([n,o],i)=>{
+    const id="npc"+i, R=mulberry32(i*977+3);
+    const fur={};
+    for(const [k,p] of Object.entries(DEFAULT_LAYOUT)){ if(R()<0.12 && k!=="nest") continue; fur[k]=[p[0]+Math.round((R()-.5)*4), p[1]+Math.round((R()-.5)*3)]; }
+    const clean={}; for(const k in fur) clean[k]=t-R()*DIRTY_MS*1.1;
+    d.hamsters[id]={id,name:n,owner:o,breed:keys[i%keys.length],created:t-(i+1)*86400e3,furniture:fur,clean,
+      love:{tian:Math.floor(R()*9),ren:Math.floor(R()*9),wu:Math.floor(R()*9),wo:Math.floor(R()*9)},heartsReceived:Math.floor(R()*12)};
+  });
+  const ev=["💗 小安 送愛心給「湯圓」：「謝謝你把牠照顧得這麼好」","🧽 婷婷 幫「芋圓」換浴沙","📔 冠宇 的反思：「原來等牠睡飽再陪牠玩，也是一種愛。」","🍚 阿哲 餵了「麻糬」","🐣 雅筑 迎接了新倉鼠「雪球」"];
+  ev.forEach((text,i)=> d.feed["seed"+i]={t:t-(ev.length-i)*600e3, text});
+  return d;
+}
+
+// ============================================================
+// 4. 身分與全域狀態
+// ============================================================
+let uid = localStorage.getItem("hv_uid");
+if(!uid){ uid = "u" + Math.random().toString(36).slice(2,10); localStorage.setItem("hv_uid", uid); }
+let ALL = {};            // 所有倉鼠
+let viewing = uid;       // 現在正在看誰的籠子
+let editing = null;      // 擺設模式草稿 {furniture, sel}
+let tour = null;
+
+$("#net").textContent = DB.mode==="cloud" ? "☁️ 雲端連線" : "💻 單機示範";
+$("#net").classList.add(DB.mode==="cloud" ? "cloud" : "local");
+$("#modeNote").innerHTML = DB.mode==="cloud"
+  ? "目前連線到雲端資料庫，全班同學看到的是同一個倉鼠村。"
+  : "目前是<b>單機示範模式</b>：資料只存在這台裝置的瀏覽器裡。要讓全班連線，請依《部署教學》填入 Firebase 設定。「切換測試身分」可模擬另一位同學（開兩個分頁更好玩）。";
+$("#switchId").hidden = DB.mode==="cloud";
+
+// ============================================================
+// 5. Three.js 場景
+// ============================================================
+const view = $("#view");
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 3/2, 0.1, 1000);
+const CAM_DEFAULT = {r: window.innerWidth<600 ? 62 : 55, theta:-0.6, phi:0.95};
+let cam = {...CAM_DEFAULT};
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio||1));
+renderer.shadowMap.enabled = true;
+view.appendChild(renderer.domElement);
+function resize(){ const w=view.clientWidth, h=view.clientHeight; if(!w||!h) return; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); }
+window.addEventListener("resize", resize);
+
+const amb = new THREE.AmbientLight(0xffffff, 0.75); scene.add(amb);
+const sun = new THREE.DirectionalLight(0xfff4e0, 0.8);
+sun.position.set(14,28,10); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
+Object.assign(sun.shadow.camera,{left:-30,right:30,top:30,bottom:-30}); scene.add(sun);
+
+const M = (color, o={}) => new THREE.MeshLambertMaterial(Object.assign({color}, o));
+function mesh(geo, mat, x=0, y=0, z=0){ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.castShadow=true; m.receiveShadow=true; return m; }
+
+// 籠子：48 × 32，牆高 7（沿用原本豬妞籠子的座標系）
+const CAGE_W=48, CAGE_D=32, WALL_H=7;
+(function buildCage(){
+  const a=mesh(new THREE.BoxGeometry(CAGE_W/2,0.6,CAGE_D), M(0xe9eefb), -CAGE_W/4,-0.3,0); a.castShadow=false; scene.add(a);
+  const b=mesh(new THREE.BoxGeometry(CAGE_W/2,0.6,CAGE_D), M(0xe4f5e9),  CAGE_W/4,-0.3,0); b.castShadow=false; scene.add(b);
+  const g=new THREE.BoxGeometry(CAGE_W,WALL_H,CAGE_D);
+  const box=new THREE.Mesh(g, M(0xbfe0ea,{transparent:true,opacity:0.12})); box.position.y=WALL_H/2; scene.add(box);
+  const wire=new THREE.LineSegments(new THREE.EdgesGeometry(g), new THREE.LineBasicMaterial({color:0x3a2f22})); wire.position.y=WALL_H/2; scene.add(wire);
+})();
+
+// ---- 家具建構 ----
+const BUILD = {
+  nest(g){
+    g.add(mesh(new THREE.CylinderGeometry(3.2,3.4,2.8,20,1,true), M(0x9b3b3b,{side:THREE.DoubleSide}), 0,1.4,0));
+    g.add(mesh(new THREE.CylinderGeometry(3.2,3.2,0.3,20), M(0xc98b6a), 0,0.15,0));
+    g.add(mesh(new THREE.ConeGeometry(4,2.6,20), M(0x7a2a2a), 0,4.5,0));
+    g.add(mesh(new THREE.BoxGeometry(1.9,2,0.4), M(0x3a2418), 0,1.1,3.2));
+  },
+  wheel(g){
+    const R=6, D=4, spin=new THREE.Group(); spin.position.y=R+0.3;
+    const drum=mesh(new THREE.CylinderGeometry(R,R,D,40,1,true), M(0x1f6e3a,{side:THREE.DoubleSide})); drum.rotation.x=Math.PI/2; spin.add(drum);
+    const back=mesh(new THREE.CircleGeometry(R,40), M(0x1a5e32,{side:THREE.DoubleSide})); back.position.z=-D/2; spin.add(back);
+    for(let i=0;i<20;i++){ const a=i/20*Math.PI*2; const t=mesh(new THREE.BoxGeometry(0.15,0.9,D*0.9), M(0x14502a)); t.position.set(Math.cos(a)*(R-0.3),Math.sin(a)*(R-0.3),0); t.rotation.z=a; spin.add(t); }
+    const hub=mesh(new THREE.CylinderGeometry(1,1,1,16), M(0x8a8f8a)); hub.rotation.x=Math.PI/2; hub.position.z=-D/2-0.3; spin.add(hub);
+    g.add(spin); g.userData.spin=spin;
+    g.add(mesh(new THREE.BoxGeometry(0.8,R+0.3,0.8), M(0x9a8f82), 0,(R+0.3)/2,-D/2-0.8));
+    g.add(mesh(new THREE.BoxGeometry(5,0.5,3), M(0x9a8f82), 0,0.25,-D/2-0.8));
+  },
+  bowl(g){
+    g.add(mesh(new THREE.CylinderGeometry(2.6,1.8,1.4,24,1,true), M(0xe8c98a,{side:THREE.DoubleSide}), 0,0.7,0));
+    g.add(mesh(new THREE.CylinderGeometry(1.8,1.8,0.25,24), M(0xd9b877), 0,0.15,0));
+    const cols=[0xd9a441,0x8a6b3a,0xc44,0x6a8a3a,0xe0b84e,0x5bb8e6,0xf29bb0], R=mulberry32(42);
+    for(let i=0;i<16;i++){ const r=R()*1.6, a=R()*Math.PI*2; g.add(mesh(new THREE.SphereGeometry(0.28,8,6), M(cols[i%cols.length]), Math.cos(a)*r, 0.55+R()*0.2, Math.sin(a)*r)); }
+  },
+  bath(g){
+    const wall=M(0x8fc9de);
+    g.add(mesh(new THREE.BoxGeometry(6.4,0.3,5.4), wall, 0,0.15,0));
+    g.add(mesh(new THREE.BoxGeometry(6.4,1.2,0.3), wall, 0,0.6,-2.6));
+    g.add(mesh(new THREE.BoxGeometry(6.4,0.6,0.3), wall, 0,0.3, 2.6));
+    g.add(mesh(new THREE.BoxGeometry(0.3,1.2,5.4), wall, -3.1,0.6,0));
+    g.add(mesh(new THREE.BoxGeometry(0.3,1.2,5.4), wall,  3.1,0.6,0));
+    g.add(mesh(new THREE.BoxGeometry(5.9,0.3,4.9), M(0xf1dfae), 0,0.45,0));
+  },
+  toilet(g){
+    const m=M(0xd6d6d6,{side:THREE.DoubleSide});
+    g.add(mesh(new THREE.BoxGeometry(4.4,0.3,4.4), m, 0,0.15,0));
+    g.add(mesh(new THREE.BoxGeometry(4.4,2,0.3), m, 0,1,-2.1));
+    g.add(mesh(new THREE.BoxGeometry(0.3,2,4.4), m, -2.1,1,0));
+    g.add(mesh(new THREE.BoxGeometry(0.3,2,4.4), m,  2.1,1,0));
+    g.add(mesh(new THREE.BoxGeometry(3.9,0.3,3.9), M(0xe9e2cf), 0,0.4,0));
+  },
+  platform(g){
+    const leg=M(0xc08a4a);
+    g.add(mesh(new THREE.BoxGeometry(8,0.6,5), M(0xd9a85f), 0,3.2,-0.5));
+    [[-3.6,-2.6],[3.6,-2.6],[-3.6,1.6],[3.6,1.6]].forEach(([x,z])=>g.add(mesh(new THREE.BoxGeometry(0.6,3.2,0.6), leg, x,1.6,z)));
+    g.add(mesh(new THREE.CylinderGeometry(0.8,0.8,3.2,14), M(0x87cfe8,{transparent:true,opacity:0.85}), 0,5.2,1.6));
+    g.add(mesh(new THREE.CylinderGeometry(0.15,0.15,1.8,8), M(0x9aa3a8), 0,2.8,2.1));
+  },
+  toy(g){
+    const wood=M(0xcfa66a);
+    g.add(mesh(new THREE.BoxGeometry(6,0.5,2.6), wood, 0,0.25,0));
+    [-2.6,2.6].forEach(x=>g.add(mesh(new THREE.BoxGeometry(0.5,2.8,0.5), wood, x,1.6,0)));
+    const spin=new THREE.Group();
+    const ax=mesh(new THREE.CylinderGeometry(0.2,0.2,5.6,8), M(0xb98a52)); ax.rotation.z=Math.PI/2; ax.position.y=2.4; spin.add(ax);
+    [0xf29bb0,0xf2d14e,0x5bb8e6].forEach((c,i)=>{ const cube=mesh(new THREE.BoxGeometry(1.5,1.5,1.5), M(c)); cube.position.set(-1.7+i*1.7,2.4,0); cube.userData.cube=true; spin.add(cube); });
+    g.add(spin); g.userData.spin=spin;
+  },
+};
+// 啃咬玩具：純裝飾
+(function chew(){
+  const carrot=new THREE.Group();
+  const cb=mesh(new THREE.ConeGeometry(0.6,2.2,10), M(0xe8822e)); cb.rotation.x=Math.PI; carrot.add(cb);
+  carrot.add(mesh(new THREE.ConeGeometry(0.45,0.9,6), M(0x4a9e4a), 0,1.4,0));
+  carrot.position.set(-11,0.6,1); carrot.rotation.z=1.4; scene.add(carrot);
+  const corn=mesh(new THREE.CylinderGeometry(0.55,0.55,2,10), M(0xf2d14e), 8,0.55,-1); corn.rotation.z=Math.PI/2; corn.rotation.y=0.7; scene.add(corn);
+})();
+
+const furnRoot = new THREE.Group(); scene.add(furnRoot);
+let furnMeshes = {}, furnSig = "", OBST = [];
+const DIRT_COL = new THREE.Color(0x6b5236);
+function renderFurniture(h, fur){
+  const sig = JSON.stringify(fur);
+  if(sig === furnSig) return;
+  furnSig = sig;
+  while(furnRoot.children.length) furnRoot.remove(furnRoot.children[0]);
+  furnMeshes = {}; OBST = [];
+  for(const [k,p] of Object.entries(fur||{})){
+    if(!FURN[k] || !BUILD[k]) continue;
+    const g=new THREE.Group(); BUILD[k](g); g.position.set(p[0],0,p[1]);
+    g.traverse(o=>{ if(o.material && !o.material.userData.base) o.material.userData.base=o.material.color.clone(); });
+    furnRoot.add(g); furnMeshes[k]=g; OBST.push({x:p[0], z:p[1], r:FURN[k].r, k});
+  }
+  applyDirt(h);
+}
+function applyDirt(h){
+  for(const [k,g] of Object.entries(furnMeshes)){
+    const d = dirtOf(h,k);
+    g.traverse(o=>{ const b=o.material && o.material.userData.base; if(b) o.material.color.copy(b).lerp(DIRT_COL, d*0.55); });
+  }
+}
+
+// ---- 倉鼠模型 ----
+const hamster = new THREE.Group(); scene.add(hamster);
+let hamSig = "", hamScale = 0.55, nameSprite = null;
+function ball(r, color, x, y, z){ return mesh(new THREE.SphereGeometry(r,16,12), M(color), x,y,z); }
+function textSprite(text, w=256, h=64, font="bold 34px sans-serif", bg="rgba(255,255,255,.85)"){
+  const c=document.createElement("canvas"); c.width=w; c.height=h; const x=c.getContext("2d");
+  x.fillStyle=bg; x.beginPath(); x.roundRect ? x.roundRect(2,2,w-4,h-4,18) : x.rect(2,2,w-4,h-4); x.fill();
+  x.fillStyle="#4a3b2a"; x.font=font; x.textAlign="center"; x.textBaseline="middle"; x.fillText(text,w/2,h/2+2);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c), transparent:true, depthTest:false}));
+  return s;
+}
+function buildHamster(h){
+  const sig = h.breed + "|" + h.name;
+  if(sig === hamSig) return; hamSig = sig;
+  while(hamster.children.length) hamster.remove(hamster.children[0]);
+  const B = BREEDS[h.breed] || BREEDS.pudding;
+  const body = new THREE.Group();
+  const torso = ball(2.6, B.body, 0,0,0); torso.scale.set(1.25,1,1.4); body.add(torso);
+  body.add(ball(1.6, B.belly, 0,-0.6,1.4));
+  body.add(ball(1.9, B.body, 0,0.6,2.4));
+  body.add(ball(0.6, B.ear, -1,1.8,2.6)); body.add(ball(0.6, B.ear, 1,1.8,2.6));
+  [-0.7,0.7].forEach(x=>body.add(ball(0.28, 0x201810, x,0.9,3.9)));
+  body.add(ball(0.3, 0xf3a8b8, 0,0.3,4.1));
+  body.add(ball(0.55, B.belly, -0.9,0.1,3.6)); body.add(ball(0.55, B.belly, 0.9,0.1,3.6)); // 臉頰
+  if(B.stripe){ const s=ball(0.5, B.stripe, 0,2.45,0); s.scale.set(0.55,0.35,5.2); body.add(s); }
+  if(B.brow){ [-0.75,0.75].forEach(x=>body.add(ball(0.22, 0xffffff, x,1.35,3.7))); }
+  body.add(ball(0.4, B.body, 0,-0.3,-3.5)); // 尾巴
+  hamster.add(body); hamster.userData.body = body;
+  hamScale = 0.55 * B.size;
+  body.scale.setScalar(hamScale);
+  nameSprite = textSprite(h.name); nameSprite.scale.set(6,1.5,1); scene.add(nameSprite);
+  if(hamster.userData.oldName) scene.remove(hamster.userData.oldName);
+  hamster.userData.oldName = nameSprite;
+}
+// 💤 與 💗
+const zzz = textSprite("💤",64,64,"40px sans-serif","rgba(0,0,0,0)"); zzz.scale.set(2.6,2.6,1); zzz.visible=false; scene.add(zzz);
+const heartsFx = [];
+function burstHearts(x,y,z,n=6){
+  for(let i=0;i<n;i++){ const s=textSprite("💗",64,64,"40px sans-serif","rgba(0,0,0,0)"); s.scale.set(1.8,1.8,1);
+    s.position.set(x+(Math.random()-.5)*3, y+Math.random(), z+(Math.random()-.5)*3); s.userData={vy:2+Math.random()*2, life:1.6}; scene.add(s); heartsFx.push(s); }
+}
+
+// ---- 繞路：可連續繞多個障礙（遞迴，最多 3 層）----
+function segHit(ax,az,bx,bz){
+  for(const o of OBST){
+    if(Math.hypot(o.x-ax,o.z-az) < o.r+1.2 || Math.hypot(o.x-bx,o.z-bz) < o.r+1.2) continue; // 起點/終點本身在家具裡就略過
+    const dx=bx-ax, dz=bz-az, L2=dx*dx+dz*dz||1;
+    let t=((o.x-ax)*dx+(o.z-az)*dz)/L2; t=Math.max(0,Math.min(1,t));
+    if(Math.hypot(o.x-(ax+t*dx), o.z-(az+t*dz)) < o.r+1.5) return o;
+  }
+  return null;
+}
+function route(a, b, depth=0){
+  const o = segHit(a[0],a[1],b[0],b[1]);
+  if(!o || depth>=3) return [b];
+  const vx=b[0]-a[0], vz=b[1]-a[1], L=Math.hypot(vx,vz)||1, nx=-vz/L, nz=vx/L, off=o.r+3;
+  const c1=[clampX(o.x+nx*off), clampZ(o.z+nz*off)], c2=[clampX(o.x-nx*off), clampZ(o.z-nz*off)];
+  const m=[(a[0]+b[0])/2,(a[1]+b[1])/2];
+  const p = Math.hypot(c1[0]-m[0],c1[1]-m[1]) <= Math.hypot(c2[0]-m[0],c2[1]-m[1]) ? c1 : c2;
+  return [...route(a,p,depth+1), ...route(p,b,depth+1)];
+}
+
+// ---- 移動狀態 ----
+const mv = {key:null, wps:[], from:[0,0], to:[0,0], t:0, dur:1, cur:[0,0], moving:false, face:0};
+let curState = null, bob = 0;
+function retarget(st, teleport){
+  curState = st;
+  if(st.key === mv.key && !teleport) return;
+  mv.key = st.key;
+  if(teleport){ mv.cur=[...st.pt]; mv.wps=[]; mv.moving=false; hamster.position.set(st.pt[0],0,st.pt[1]); return; }
+  mv.wps = st.approach ? [...route(mv.cur, st.approach), st.pt] : route(mv.cur, st.pt);
+  nextLeg();
+}
+function nextLeg(){
+  if(!mv.wps.length){ mv.moving=false; return; }
+  mv.from=[...mv.cur]; mv.to=mv.wps.shift();
+  const d=Math.hypot(mv.to[0]-mv.from[0], mv.to[1]-mv.from[1]);
+  if(d<0.05){ nextLeg(); return; }
+  mv.dur = Math.max(0.35, d/7); mv.t=0; mv.moving=true;
+  hamster.rotation.y = Math.atan2(mv.to[0]-mv.from[0], mv.to[1]-mv.from[1]);
+}
+
+// ---- 天：天空隨台灣時間變化 ----
+const SKY_DAY=new THREE.Color(0xf3ead6), SKY_NIGHT=new THREE.Color(0x1d2742);
+function updateSky(t){
+  const h=skyHour(t), night=isNight(t);
+  const k = night ? 1 : (h>=17 ? (h-17)/2 : (h<8 ? 1-(h-6)/2 : 0));
+  const kk=Math.max(0,Math.min(1,k));
+  scene.background = SKY_DAY.clone().lerp(SKY_NIGHT, kk);
+  amb.intensity = 0.75 - kk*0.3; sun.intensity = 0.8 - kk*0.45;
+  sun.color.set(kk>0.5 ? 0xaab8ff : 0xfff4e0);
+  const p=taipei(t);
+  $("#sky").textContent = (nightSim?"🌙(模擬) ":(night?"🌙 ":"☀️ ")) + String(p.h).padStart(2,"0")+":"+String(p.m).padStart(2,"0");
+}
+
+// ---- 主迴圈 ----
+let last = performance.now(), slowTick = 0;
+function animate(ts){
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.05, (ts-last)/1000); last = ts;
+  const t = now();
+  const h = ALL[viewing];
+  if(h && !editing){
+    retarget(decide(h,t), false);
+  }
+  if(mv.moving){
+    mv.t += dt/mv.dur; const k=Math.min(1,mv.t), e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
+    mv.cur=[mv.from[0]+(mv.to[0]-mv.from[0])*e, mv.from[1]+(mv.to[1]-mv.from[1])*e];
+    if(k>=1){ mv.cur=[...mv.to]; nextLeg(); if(!mv.moving && curState){ if(curState.face!=null) hamster.rotation.y=curState.face; if(curState.anim==="run") hamster.rotation.y=Math.PI/2; } }
+  }
+  // 姿勢與動畫
+  const st = curState || {};
+  const body = hamster.userData.body;
+  const arrived = !mv.moving;
+  const sleeping = st.mode==="sleep" && arrived;
+  const lift = arrived && st.inner ? (st.item==="bath"?0.6:0.35) : 0;
+  let y = 2.6*hamScale*(sleeping?0.7:1) + lift;
+  hamster.rotation.x = 0; hamster.rotation.z = 0;
+  if(body) body.scale.set(hamScale, hamScale*(sleeping?0.7:1), hamScale);
+  if(mv.moving || (arrived && (st.anim==="run"||st.anim==="walk"))){ bob += dt*14; y += Math.abs(Math.sin(bob))*0.45; }
+  if(arrived){
+    if(st.anim==="eat") hamster.rotation.x = Math.sin(ts/120)*0.12+0.12;
+    if(st.anim==="drink") hamster.rotation.x = -0.3;
+    if(st.anim==="roll") hamster.rotation.z = Math.sin(ts/160)*0.7;
+    if(st.anim==="groom" && body) body.rotation.y = Math.sin(ts/200)*0.35; else if(body) body.rotation.y = 0;
+    if(st.anim==="happy"){ y += Math.abs(Math.sin(ts/150))*0.8; }
+  }
+  hamster.position.set(mv.cur[0], y, mv.cur[1]);
+  zzz.visible = sleeping;
+  if(sleeping) zzz.position.set(mv.cur[0]+1.6, 4.6+Math.sin(ts/400)*0.4, mv.cur[1]);
+  if(nameSprite){ nameSprite.position.set(mv.cur[0], y+3.6*hamScale/0.55+ (st.inner&&st.item==="nest"&&arrived?2.5:0), mv.cur[1]); }
+  // 家具動畫
+  const wheel=furnMeshes.wheel;
+  if(wheel && st.anim==="run" && arrived) wheel.userData.spin.rotation.z -= dt*6;
+  const toy=furnMeshes.toy;
+  if(toy && st.anim==="spin" && arrived) toy.userData.spin.children.forEach(c=>{ if(c.userData.cube) c.rotation.x += dt*5; });
+  // 愛心特效
+  for(let i=heartsFx.length-1;i>=0;i--){ const s=heartsFx[i]; s.userData.life-=dt; s.position.y+=s.userData.vy*dt; s.material.opacity=Math.max(0,s.userData.life/1.6);
+    if(s.userData.life<=0){ scene.remove(s); heartsFx.splice(i,1); } }
+  // 每秒更新一次的東西
+  slowTick += dt;
+  if(slowTick > 1){ slowTick = 0; updateSky(t); if(h){ updateStatus(h, st); applyDirt(h); } }
+  // 相機
+  camera.position.set(cam.r*Math.cos(cam.phi)*Math.sin(cam.theta), cam.r*Math.sin(cam.phi), cam.r*Math.cos(cam.phi)*Math.cos(cam.theta));
+  camera.lookAt(0,2,0);
+  renderer.render(scene, camera);
+}
+
+// ---- 視角操作（滑鼠/觸控/雙指）+ 點擊地板（擺設）----
+const pointers = new Map(); let pinch0=0, downAt=null;
+view.addEventListener("pointerdown", e=>{ view.setPointerCapture(e.pointerId); pointers.set(e.pointerId,{x:e.clientX,y:e.clientY}); downAt={x:e.clientX,y:e.clientY,t:performance.now(),moved:0};
+  if(pointers.size===2){ const [a,b]=[...pointers.values()]; pinch0=Math.hypot(a.x-b.x,a.y-b.y); } });
+view.addEventListener("pointermove", e=>{
+  const p=pointers.get(e.pointerId); if(!p) return;
+  if(pointers.size===2){ p.x=e.clientX; p.y=e.clientY; const [a,b]=[...pointers.values()]; const d=Math.hypot(a.x-b.x,a.y-b.y);
+    cam.r=Math.max(22,Math.min(80,cam.r*(pinch0/d||1))); pinch0=d; if(downAt) downAt.moved=99; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY;
+  if(downAt) downAt.moved += Math.abs(dx)+Math.abs(dy);
+  cam.theta -= dx*0.008; cam.phi = Math.max(0.25, Math.min(1.45, cam.phi + dy*0.006));
+});
+function pUp(e){ pointers.delete(e.pointerId);
+  if(downAt && downAt.moved<8 && performance.now()-downAt.t<500 && pointers.size===0) onTap(e);
+  if(pointers.size===0) downAt=null; }
+view.addEventListener("pointerup", pUp); view.addEventListener("pointercancel", e=>{pointers.delete(e.pointerId); downAt=null;});
+view.addEventListener("wheel", e=>{ e.preventDefault(); cam.r=Math.max(22,Math.min(80,cam.r+e.deltaY*0.05)); }, {passive:false});
+
+const ray = new THREE.Raycaster(), floorPlane = new THREE.Plane(new THREE.Vector3(0,1,0), 0);
+function onTap(e){
+  if(!editing) return;
+  const r=renderer.domElement.getBoundingClientRect();
+  ray.setFromCamera({x:((e.clientX-r.left)/r.width)*2-1, y:-((e.clientY-r.top)/r.height)*2+1}, camera);
+  const p=new THREE.Vector3(); if(!ray.ray.intersectPlane(floorPlane,p)) return;
+  const sel=editing.sel, fur=editing.furniture;
+  if(sel==="__del"){
+    let best=null, bd=1e9; for(const [k,q] of Object.entries(fur)){ const d=Math.hypot(q[0]-p.x,q[1]-p.z); if(d<FURN[k].r+1 && d<bd){bd=d;best=k;} }
+    if(best){ delete fur[best]; toast(`收起了 ${FURN[best].icon} ${FURN[best].label}`); refreshEdit(); }
+    return;
+  }
+  if(!sel){ toast("先在下方選一件家具"); return; }
+  const f=FURN[sel];
+  const x=Math.round(Math.max(-24+f.r, Math.min(24-f.r, p.x))), z=Math.round(Math.max(-16+f.r, Math.min(16-f.r-1, p.z)));
+  for(const [k,q] of Object.entries(fur)){ if(k===sel) continue; if(Math.hypot(q[0]-x,q[1]-z) < (FURN[k].r+f.r)*0.82){ toast(`跟 ${FURN[k].label} 太擠了，換個位置吧`); return; } }
+  fur[sel]=[x,z]; refreshEdit();
+}
+
+// ============================================================
+// 6. UI
+// ============================================================
+// 分頁
+document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+function showTab(name){
+  document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on", b.dataset.tab===name));
+  document.querySelectorAll(".tab").forEach(s=>s.classList.toggle("on", s.id==="tab-"+name));
+  if(name==="cage") setTimeout(resize,0);
+  if(name==="village") renderVillage();
+  if(tour && name!=="cage" && name!=="village") stopTour();
+}
+
+function visit(id){
+  if(!ALL[id]) return;
+  if(editing) exitEdit(false);
+  viewing = id;
+  const h = ALL[id];
+  buildHamster(h); renderFurniture(h, h.furniture);
+  retarget(decide(h), true);
+  renderCageHeader(); renderActions(); renderQuartet();
+  showTab("cage");
+}
+function renderCageHeader(){
+  const h=ALL[viewing]; if(!h) return; const B=BREEDS[h.breed]||BREEDS.pudding;
+  $("#cageAvatar").style.background=hex(B.body);
+  $("#cageName").textContent = (viewing===uid?"我的 ":"")+h.name;
+  $("#cageSub").textContent = `${B.name} · 主人 ${h.owner}`;
+}
+function updateStatus(h, st){
+  $("#stBeh").textContent = st.beh || "—";
+  $("#stMode").textContent = MODE_LABEL[st.mode] || "";
+  $("#stHearts").textContent = h.heartsReceived||0;
+}
+function renderActions(){
+  const mine = viewing===uid;
+  const el=$("#actions");
+  el.innerHTML = `<button id="aFeed">🍚 餵食</button><button class="sec" id="aPet">🤲 摸摸</button>` +
+    (mine ? `<button class="sec" id="aClean">🧽 打掃</button><button class="sec" id="aEdit">🪑 擺設</button>`
+          : `<button class="pink" id="aHeart">💗 送愛心</button><button class="ghost" id="aHome">🏠 回我家</button>`) +
+    `<button class="ghost" id="aCam">🎥</button>`;
+  $("#aFeed").onclick=()=>interact("feed"); $("#aPet").onclick=()=>interact("pet");
+  $("#aCam").onclick=()=>{cam={...CAM_DEFAULT};};
+  if(mine){ $("#aClean").onclick=openClean; $("#aEdit").onclick=enterEdit; }
+  else { $("#aHeart").onclick=openHeart; $("#aHome").onclick=()=>{stopTour();visit(uid);}; }
+}
+function renderQuartet(){
+  const h=ALL[viewing]; if(!h) return; const L=h.love||{};
+  $("#qOwner").textContent = `${h.owner} 的愛 · 總分 ${(L.tian||0)+(L.ren||0)+(L.wu||0)+(L.wo||0)}`;
+  $("#quartet").innerHTML = [["tian","天","尊重"],["ren","人","關懷"],["wu","物","珍惜"],["wo","我","覺察"]]
+    .map(([k,a,b])=>`<div class="q ${k}"><b>${L[k]||0}</b>${a}・${b}</div>`).join("");
+}
+
+// ---- 互動：餵食 / 摸摸（天：尊重作息）----
+function interact(kind){
+  const h=ALL[viewing]; if(!h) return; const t=now(); const st=decide(h,t);
+  if(st.mode==="sleep"){
+    toast(`噓…「${esc(h.name)}」正在睡覺 🌙<br>愛，是尊重牠的作息。天黑牠醒來再來吧！`, 4200); return;
+  }
+  const cdKey=`hv_cd_${kind}_${viewing}`, lastT=+localStorage.getItem(cdKey)||0;
+  if(t-lastT < CD_MS){ toast(kind==="feed"?"剛剛才餵過，吃太多會變胖喔 🐹":"牠剛被摸過，讓牠自己玩一下吧"); return; }
+  localStorage.setItem(cdKey, t);
+  const mine = viewing===uid;
+  if(kind==="feed"){
+    if(!h.furniture?.bowl){ toast("這個籠子沒有飼料盆耶"); return; }
+    overrides[h.id] = {until:t+12000, state:{key:"feed"+t, beh:"吃你給的飼料", mode:st.mode, anim:"eat", item:"bowl", pt:spotOf(h,"bowl"), face:Math.PI}};
+    toast(mine?"🍚 牠醒著，正是吃飯的好時機！（天 +1）":`🍚 你餵了「${esc(h.name)}」（人 +1）`);
+  }else{
+    overrides[h.id] = {until:t+6000, state:{key:"pet"+t, beh:"被摸摸，好開心", mode:st.mode, anim:"happy", pt:[...mv.cur]}};
+    setTimeout(()=>burstHearts(mv.cur[0],4,mv.cur[1]),300);
+    toast(mine?"🤲 牠蹭了蹭你的手（天 +1）":`🤲 「${esc(h.name)}」蹭了蹭你的手（人 +1）`);
+  }
+  DB.inc(`hamsters/${uid}/love/${mine?"tian":"ren"}`);
+  if(!mine && ALL[uid]) DB.push("feed", {t, text:`${kind==="feed"?"🍚":"🤲"} ${ALL[uid].owner} ${kind==="feed"?"餵了":"摸了摸"}「${h.name}」`});
+}
+
+// ---- 人：送愛心 ----
+function openHeart(){
+  const h=ALL[viewing]; const key=`hv_heart_${viewing}_${taipei(now()).day}`;
+  if(localStorage.getItem(key)){ toast("今天已經送過愛心給牠了，明天再來 💗"); return; }
+  openModal(`<h2>💗 送愛心給「${esc(h.name)}」</h2>
+    <div class="small">留一句話給主人 ${esc(h.owner)}（可空白，最多 40 字）</div>
+    <div style="margin:8px 0">${HEART_PRESETS.map(p=>`<span class="chip" data-p="${esc(p)}">${esc(p)}</span>`).join("")}</div>
+    <input type="text" id="hMsg" maxlength="40" style="width:100%" placeholder="想說的話…">
+    <div class="btns" style="margin-top:10px"><button class="pink" id="hSend">送出</button><button class="ghost" onclick="closeModal()">取消</button></div>`);
+  document.querySelectorAll("#modalBox .chip").forEach(c=>c.onclick=()=>$("#hMsg").value=c.dataset.p);
+  $("#hSend").onclick=()=>{
+    const msg=$("#hMsg").value.trim().slice(0,40), t=now(), me=ALL[uid];
+    DB.push(`hearts/${viewing}`, {t, from:uid, fromName:me.owner, msg});
+    DB.inc(`hamsters/${viewing}/heartsReceived`);
+    DB.inc(`hamsters/${uid}/love/ren`);
+    DB.push("feed", {t, text:`💗 ${me.owner} 送愛心給「${h.name}」${msg?`：「${msg}」`:""}`});
+    localStorage.setItem(key,"1"); closeModal(); burstHearts(mv.cur[0],4,mv.cur[1],10); toast("愛心送出了！（人 +1）");
+  };
+}
+
+// ---- 物：打掃 ----
+function openClean(){
+  const h=ALL[uid]; const items=Object.keys(h.furniture||{}).filter(k=>FURN[k]);
+  openModal(`<h2>🧽 照顧家具</h2><div class="small">家具會隨時間變髒，超過 85% 倉鼠就不想用了。</div>
+    ${items.map(k=>{const d=dirtOf(h,k); return `<div class="row" style="margin:8px 0"><span style="width:96px">${FURN[k].icon} ${FURN[k].label}</span>
+      <div class="dirt"><i style="width:${Math.round(d*100)}%"></i></div><span class="small" style="width:36px">${Math.round(d*100)}%</span>
+      <button class="sec" data-k="${k}">${FURN[k].clean}</button></div>`;}).join("")}
+    <div class="btns"><button class="ghost" onclick="closeModal()">關閉</button></div>`);
+  document.querySelectorAll("#modalBox button[data-k]").forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k, d=dirtOf(h,k), t=now();
+    if(d<0.15){ toast("還很乾淨喔！珍惜也包括不過度消耗 🌱"); return; }
+    DB.update(`hamsters/${uid}/clean`, {[k]:t});
+    DB.inc(`hamsters/${uid}/love/wu`);
+    DB.push("feed", {t, text:`🧽 ${h.owner} 幫「${h.name}」${FURN[k].clean}`});
+    toast(`${FURN[k].icon} ${FURN[k].clean}完成（物 +1）`); closeModal();
+  });
+}
+
+// ---- 擺設模式 ----
+function enterEdit(){
+  editing = {furniture: JSON.parse(JSON.stringify(ALL[uid].furniture||{})), sel:null};
+  $("#editBar").hidden=false; $("#actions").hidden=true; refreshEdit();
+  toast("擺設模式：選家具 → 點地板");
+}
+function refreshEdit(){
+  const fur=editing.furniture;
+  $("#chips").innerHTML = Object.entries(FURN).map(([k,f])=>`<span class="chip ${fur[k]?"placed":""} ${editing.sel===k?"sel":""}" data-k="${k}">${f.icon} ${f.label}${fur[k]?" ✓":""}</span>`).join("")
+    + `<span class="chip del ${editing.sel==="__del"?"sel":""}" data-k="__del">🗑 移除</span>`;
+  document.querySelectorAll("#chips .chip").forEach(c=>c.onclick=()=>{ editing.sel=c.dataset.k; refreshEdit(); });
+  renderFurniture(ALL[uid], fur);
+  // 草稿時倉鼠站到空地
+  mv.wps=[]; mv.moving=false; mv.key=null;
+}
+function exitEdit(save){
+  if(save && editing){
+    if(!editing.furniture.nest) toast("提醒：沒有小窩，牠白天只能睡在角落 🥺", 4000);
+    DB.set(`hamsters/${uid}/furniture`, editing.furniture);
+  }
+  editing=null; $("#editBar").hidden=true; $("#actions").hidden=false;
+  if(!save && ALL[uid]) { furnSig=""; renderFurniture(ALL[viewing], ALL[viewing].furniture); }
+}
+$("#editDone").onclick=()=>exitEdit(true);
+$("#editCancel").onclick=()=>exitEdit(false);
+
+// ---- 村莊 ----
+function renderVillage(){
+  const list=Object.values(ALL||{}).filter(h=>h && h.name);
+  const q=$("#search").value.trim(); const t=now();
+  let arr=list.filter(h=>!q || h.name.includes(q) || (h.owner||"").includes(q));
+  const tot=h=>{const L=h.love||{};return (L.tian||0)+(L.ren||0)+(L.wu||0)+(L.wo||0);};
+  const s=$("#sort").value;
+  arr.sort((a,b)=> s==="hearts" ? (b.heartsReceived||0)-(a.heartsReceived||0) : s==="love" ? tot(b)-tot(a) : (b.created||0)-(a.created||0));
+  const awake=list.filter(h=>decide(h,t).mode!=="sleep").length;
+  const hearts=list.reduce((a,h)=>a+(h.heartsReceived||0),0);
+  $("#villageStats").textContent=`全村 ${list.length} 隻倉鼠 · 醒著 ${awake} 隻 · 累積 ${hearts} 顆愛心 · ${isNight(t)?"夜晚，大家都起床了":"白天，大部分倉鼠在睡覺"}`;
+  $("#grid").innerHTML = arr.map(h=>{ const B=BREEDS[h.breed]||BREEDS.pudding, st=decide(h,t);
+    return `<div class="hcard ${h.id===uid?"me":""}" data-id="${esc(h.id)}">
+      <div class="hearts">💗${h.heartsReceived||0}</div>
+      <div class="avatar" style="background:${hex(B.body)}">${st.mode==="sleep"?"💤":"🐹"}</div>
+      <div class="nm">${esc(h.name)}${h.id===uid?"（我）":""}</div>
+      <div class="meta">${B.name} · ${esc(h.owner)}<br>愛的總分 ${tot(h)}</div>
+      <div class="st">${esc(st.beh)}</div></div>`; }).join("") || `<div class="small">還沒有倉鼠，成為第一位村民吧！</div>`;
+  document.querySelectorAll(".hcard").forEach(c=>c.onclick=()=>{ stopTour(); visit(c.dataset.id); });
+}
+$("#search").oninput=renderVillage; $("#sort").onchange=renderVillage;
+setInterval(()=>{ if($("#tab-village").classList.contains("on")) renderVillage(); }, 4000);
+
+// 自動巡禮（上台投影用）
+function stopTour(){ if(tour){ clearInterval(tour); tour=null; $("#tourBtn").textContent="▶ 自動巡禮"; } }
+$("#tourBtn").onclick=()=>{
+  if(tour){ stopTour(); return; }
+  const ids=()=>Object.keys(ALL).filter(k=>ALL[k]&&ALL[k].name); let i=0;
+  const step=()=>{ const a=ids(); if(!a.length) return; visit(a[i%a.length]); i++; };
+  step(); tour=setInterval(step, 12000); $("#tourBtn").textContent="⏸ 停止巡禮";
+  toast("每 12 秒拜訪一戶，按「回我家」或村莊卡片即可停止");
+};
+
+// ---- 愛的牆 ----
+DB.onLast("feed", 50, arr=>{
+  $("#feed").innerHTML = (arr||[]).slice().reverse().map(e=>`<li>${esc(e.text)}<span class="ago">${ago(e.t)}</span></li>`).join("") || `<li class="small">還沒有動態</li>`;
+});
+
+// ---- 我：反思日記 ----
+const todayPrompt = () => { const d=taipei(now()).day; return PROMPTS[hashStr(d+uid)%PROMPTS.length]; };
+function renderPrompt(){ const [dim,p]=todayPrompt(); $("#prompt").innerHTML=`<span class="pill">今日｜${dim}</span> ${esc(p)}`; }
+renderPrompt();
+$("#diaryBtn").onclick=()=>{
+  const text=$("#diaryText").value.trim().slice(0,200); if(!text){ toast("寫一句話就好 🙂"); return; }
+  const t=now(), day=taipei(t).day, [dim,prompt]=todayPrompt(), me=ALL[uid];
+  DB.push(`diary/${uid}`, {t, prompt, text, dim});
+  const k="hv_diary_"+day;
+  if(!localStorage.getItem(k)){ DB.inc(`hamsters/${uid}/love/wo`); localStorage.setItem(k,"1"); toast("寫下了（我 +1）"); } else toast("寫下了（今天的「我」已經加過分，多寫是給自己的）");
+  if($("#diaryShare").checked && me) DB.push("feed", {t, text:`📔 ${me.owner} 的反思：「${text.slice(0,60)}」`});
+  $("#diaryText").value="";
+};
+DB.onLast(`diary/${uid}`, 20, arr=>{
+  $("#diaryList").innerHTML=(arr||[]).slice().reverse().map(e=>`<li><span class="small">${esc(e.prompt)}</span><br>${esc(e.text)}<span class="ago">${ago(e.t)}</span></li>`).join("");
+});
+DB.onLast(`hearts/${uid}`, 30, arr=>{
+  $("#heartList").innerHTML=(arr||[]).slice().reverse().map(e=>`<li>💗 <b>${esc(e.fromName)}</b>${e.msg?`：${esc(e.msg)}`:""}<span class="ago">${ago(e.t)}</span></li>`).join("") || `<li class="small">還沒有收到愛心。先去村莊拜訪別人吧！</li>`;
+});
+
+// ---- 設定 ----
+$("#nightSim").checked = nightSim;
+$("#nightSim").onchange = e => { nightSim=e.target.checked; localStorage.setItem("hv_night", nightSim?"1":"0"); mv.key=null; };
+$("#switchId").onclick = () => { if(!confirm("切換成新的測試身分？（原本的倉鼠會留在村裡）")) return; localStorage.removeItem("hv_uid"); location.reload(); };
+$("#renameBtn").onclick = () => {
+  const h=ALL[uid]; if(!h) return;
+  openModal(`<h2>✏️ 幫倉鼠改名</h2><input type="text" id="rn" maxlength="12" value="${esc(h.name)}" style="width:100%">
+    <div class="btns" style="margin-top:10px"><button id="rnOk">確定</button><button class="ghost" onclick="closeModal()">取消</button></div>`);
+  $("#rnOk").onclick=()=>{ const n=$("#rn").value.trim().slice(0,12); if(!n) return; DB.update(`hamsters/${uid}`, {name:n}); closeModal(); };
+};
+
+// ---- 第一次進來：領養倉鼠 ----
+let onboardingOpen=false;
+function showOnboarding(){
+  if(onboardingOpen) return; onboardingOpen=true;
+  let sel="pudding";
+  openModal(`<h2>🐣 歡迎來到倉鼠村</h2>
+    <div class="small">選一隻倉鼠、幫牠取名字。牠會在你的籠子裡過自己的生活——白天睡覺、晚上活動。</div>
+    <div style="margin-top:10px"><b>你的暱稱</b></div><input type="text" id="obOwner" maxlength="10" style="width:100%" placeholder="例如：豆豆">
+    <div style="margin-top:10px"><b>選擇品種</b></div>
+    <div class="breeds">${Object.entries(BREEDS).map(([k,b])=>`<div class="breed ${k===sel?"sel":""}" data-k="${k}"><div class="sw" style="background:${hex(b.body)}"></div><b>${b.name}</b><br><span class="small">${b.desc}</span></div>`).join("")}</div>
+    <div><b>倉鼠的名字</b></div><input type="text" id="obName" maxlength="12" style="width:100%" placeholder="例如：豬妞">
+    <div class="btns" style="margin-top:12px"><button id="obGo">💗 迎接牠回家</button></div>`);
+  document.querySelectorAll(".breed").forEach(d=>d.onclick=()=>{ sel=d.dataset.k; document.querySelectorAll(".breed").forEach(x=>x.classList.toggle("sel",x===d)); });
+  $("#obGo").onclick=()=>{
+    const owner=$("#obOwner").value.trim().slice(0,10), name=$("#obName").value.trim().slice(0,12);
+    if(!owner||!name){ toast("暱稱和倉鼠名字都要填喔"); return; }
+    const t=now();
+    const h={id:uid, owner, name, breed:sel, created:t, furniture:JSON.parse(JSON.stringify(DEFAULT_LAYOUT)),
+             clean:{}, love:{tian:0,ren:0,wu:0,wo:0}, heartsReceived:0};
+    Object.keys(h.furniture).forEach(k=>h.clean[k]=t);
+    DB.set(`hamsters/${uid}`, h);
+    DB.push("feed", {t, text:`🐣 ${owner} 迎接了新倉鼠「${name}」（${BREEDS[sel].name}）`});
+    onboardingOpen=false; closeModal(); toast(`歡迎「${esc(name)}」入住倉鼠村！`);
+  };
+}
+
+// ============================================================
+// 7. 資料訂閱 → 畫面
+// ============================================================
+let firstLoad = true, hadMe = false;
+DB.on("hamsters", v=>{
+  ALL = v || {};
+  for(const k in ALL){ if(ALL[k] && !ALL[k].id) ALL[k].id = k; }
+  if(!ALL[uid]){ showOnboarding(); if(!ALL[viewing]){ const any=Object.keys(ALL)[0]; if(any) viewing=any; } }
+  else if(!hadMe){ hadMe=true; if(viewing!==uid){ viewing=uid; firstLoad=true; } }
+  const h = ALL[viewing];
+  if(h){
+    buildHamster(h);
+    if(!editing) renderFurniture(h, h.furniture);
+    if(firstLoad){ retarget(decide(h), true); firstLoad=false; }
+    renderCageHeader(); renderActions(); renderQuartet();
+  }
+  if($("#tab-village").classList.contains("on")) renderVillage();
+});
+
+resize(); updateSky(now()); requestAnimationFrame(animate);
+</script>
+</body>
+</html>
