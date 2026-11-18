@@ -270,7 +270,10 @@ const BEHAV = {
   "閒晃":  {anim:"walk",  w:3},
   "發呆":  {anim:"still", w:1},
 };
-const DAY_OK = ["喝水","上廁所","吃東西","理毛"];   // 白天偶爾醒來只做這些
+// ★ 想調整倉鼠多常醒著，改這兩個數字就好（0～1）
+const AWAKE_NIGHT = 0.90;   // 晚上 7 點～清晨 6 點醒著的機率
+const AWAKE_DAY   = 0.65;   // 白天醒著的機率（原本 0.10）
+const DAY_OK = null;        // null = 白天什麼都能做；或填 ["喝水","吃東西"] 限制白天行為
 const PROMPTS = [
   ["天","今天的天空是什麼樣子？你有停下來看一眼嗎？"],
   ["天","有什麼事是你今天決定「順其自然」的？"],
@@ -302,7 +305,7 @@ function decide(h, t=now()){
   const slot = Math.floor(t / SLOT_MS);
   const R = mulberry32((hashStr(h.id) ^ Math.imul(slot, 2654435761)) >>> 0);
   const night = isNight(t);
-  const awake = R() < (night ? 0.88 : 0.10);
+  const awake = R() < (night ? AWAKE_NIGHT : AWAKE_DAY);
   const fur = h.furniture || {};
   if(!awake){
     if(fur.nest) return {key:"sleep"+slot, beh:"睡覺", mode:"sleep", anim:"sleep", item:"nest", inner:true,
@@ -310,7 +313,7 @@ function decide(h, t=now()){
     return {key:"sleep"+slot, beh:"睡覺（沒有窩…）", mode:"sleep", anim:"sleep", pt:[-20,-12.5]};
   }
   let pool = Object.entries(BEHAV).filter(([k,b]) => !b.item || (fur[b.item] && dirtOf(h,b.item,t) < 0.85));
-  if(!night) pool = pool.filter(([k]) => DAY_OK.includes(k));
+  if(!night && DAY_OK) pool = pool.filter(([k]) => DAY_OK.includes(k));
   if(!pool.length) pool = [["發呆", BEHAV["發呆"]]];
   const total = pool.reduce((s,[,b])=>s+b.w, 0);
   let r = R()*total, pick = pool[0];
@@ -945,7 +948,7 @@ function showOnboarding(){
     <div class="breeds">${Object.entries(BREEDS).map(([k,b])=>`<div class="breed ${k===sel?"sel":""}" data-k="${k}"><div class="sw" style="background:${hex(b.body)}"></div><b>${b.name}</b><br><span class="small">${b.desc}</span></div>`).join("")}</div>
     <div><b>倉鼠的名字</b></div><input type="text" id="obName" maxlength="12" style="width:100%" placeholder="例如：豬妞">
     ${DB.mode==="cloud" ? `<div style="margin-top:10px"><b>找回密碼</b>（4–8 位，換手機或電腦時用來找回倉鼠，請記住）</div>
-      <input type="text" id="obPin" maxlength="8" inputmode="numeric" autocomplete="off" style="width:100%" placeholder="例如：0102">` : ""}
+      <input type="text" id="obPin" maxlength="8" inputmode="numeric" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="width:100%" placeholder="例如：0102">` : ""}
     <div class="btns" style="margin-top:12px"><button id="obGo">💗 迎接牠回家</button>
       ${DB.mode==="cloud" ? `<button class="ghost" id="obRecover">🔑 我已經有倉鼠了</button>` : ""}</div>`);
   if(DB.mode==="cloud") $("#obRecover").onclick=showRecover;
@@ -1010,7 +1013,7 @@ function showRecover(){
     <div style="margin-top:10px"><b>我的倉鼠</b></div>
     <select id="rcSel" style="width:100%">${list.map(h=>`<option value="${esc(h.id)}">${esc(h.name)}（主人 ${esc(h.owner)}）</option>`).join("")}</select>
     <div style="margin-top:10px"><b>找回密碼</b></div>
-    <input type="text" id="rcPin" maxlength="8" inputmode="numeric" autocomplete="off" style="width:100%">
+    <input type="text" id="rcPin" maxlength="8" inputmode="numeric" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="width:100%">
     <div class="btns" style="margin-top:12px"><button id="rcGo">找回</button><button class="ghost" id="rcBack">返回領養</button></div>`);
   $("#rcBack").onclick=()=>{ onboardingOpen=false; showOnboarding(); };
   $("#rcGo").onclick=()=>{
@@ -1025,11 +1028,11 @@ function showRecover(){
 }
 function askClassCode(next){
   openModal(`<h2>🔑 輸入班級通關碼</h2>
-    <div class="small">倉鼠村只開放給修課同學。請輸入老師或報告者公布的通關碼。</div>
-    <input type="text" id="codeIn" maxlength="30" style="width:100%;margin-top:10px" placeholder="通關碼" autocomplete="off">
+    <div class="small">倉鼠村只開放給修課同學。請輸入老師或報告者公布的通關碼。（版本 v4）</div>
+    <input type="text" id="codeIn" maxlength="30" style="width:100%;margin-top:10px" placeholder="通關碼" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="btns" style="margin-top:10px"><button id="codeGo">進入倉鼠村</button></div>`);
   const go=()=>{
-    const code=$("#codeIn").value.trim(); if(!code) return;
+    const code=$("#codeIn").value.replace(/\s+/g,""); if(!code) return;
     $("#codeGo").disabled=true;
     DB.ref(`members/${authUid}`).set(code).then(()=>{ closeModal(); next(); })
       .catch(()=>{ $("#codeGo").disabled=false; toast("通關碼不對喔，再確認一次 🙂"); });
