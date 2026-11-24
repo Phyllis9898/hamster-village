@@ -188,6 +188,7 @@
     <h2>⚙️ 設定</h2>
     <div class="card">
       <div class="row"><label><input type="checkbox" id="nightSim"> 🌙 夜晚模擬（白天上課示範用，只影響你的畫面）</label></div>
+      <div class="row" style="margin-top:6px"><label><input type="checkbox" id="sfxOn"> 🔊 倉鼠音效：咕嚕、喀滋、轟隆、沙沙</label></div>
       <div class="row" style="margin-top:6px"><label><input type="checkbox" id="shavingsOn"> 🪵 墊材效果：木片、棉球、紙團（手機變卡可以關掉）</label></div>
       <div class="btns" style="margin-top:8px">
         <button class="ghost" id="renameBtn">✏️ 幫倉鼠改名</button>
@@ -1203,6 +1204,14 @@ function animate(ts){
   if(wheel && st.anim==="run" && arrived) wheel.userData.spin.rotation.z -= dt*6;
   const toy=furnMeshes.toy;
   if(toy && st.anim==="spin" && arrived) toy.userData.spin.children.forEach(c=>{ if(c.userData.cube) c.rotation.x += dt*5; });
+  // 倉鼠音效與漫畫字：依目前行為決定
+  { let k=null;
+    if(arrived && !editing && h){
+      if(st.anim==="drink") k="drink"; else if(st.anim==="eat") k="eat"; else if(st.anim==="run") k="wheel";
+      else if(st.anim==="roll" || (st.item==="toilet" && st.inner)) k="sand";
+    }
+    SFX.setActivity(k, $("#tab-cage").classList.contains("on") ? Math.max(0.35,Math.min(1.4,40/cam.r)) : 0);
+    if(k) Onoma.tick(dt, k, mv.cur[0], y+2.2*hamScale/0.55, mv.cur[1]); }
   Sparkles.update(dt, ts);
   // 愛心特效
   for(let i=heartsFx.length-1;i>=0;i--){ const s=heartsFx[i]; s.userData.life-=dt; s.position.y+=s.userData.vy*dt; s.material.opacity=Math.max(0,s.userData.life/1.6);
@@ -1590,7 +1599,7 @@ function showRecover(){
 }
 function askClassCode(next){
   openModal(`<h2>🔑 輸入班級通關碼</h2>
-    <div class="small">倉鼠村只開放給修課同學。請輸入老師或報告者公布的通關碼。（版本 v11）</div>
+    <div class="small">倉鼠村只開放給修課同學。請輸入老師或報告者公布的通關碼。（版本 v12）</div>
     <input type="text" id="codeIn" maxlength="30" style="width:100%;margin-top:10px" placeholder="通關碼" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
     <div class="btns" style="margin-top:10px"><button id="codeGo">進入倉鼠村</button></div>`);
   const go=()=>{
@@ -1604,6 +1613,103 @@ function askClassCode(next){
 // ============================================================
 // 9. 背景音樂：程式即時產生的原創音樂盒小曲（無版權音檔，用 Web Audio 合成）
 // ============================================================
+// ---- 漫畫字（咕嚕、喀滋、轟隆、沙沙）在倉鼠旁邊冒出來 ----
+const Onoma = (() => {
+  const WORDS={drink:["咕嚕","咕嚕嚕"], eat:["喀滋","喀滋喀滋"], wheel:["轟隆","轟隆隆"], sand:["沙沙","唰唰"]};
+  const COL={drink:"#3a8fd9", eat:"#d9822b", wheel:"#5a4a8a", sand:"#b08a4a"};
+  const GAP={drink:0.9, eat:0.7, wheel:0.8, sand:0.9};
+  const live=[]; let acc=0, cache={};
+  function tex(word,color){ const key=word+color; if(cache[key]) return cache[key];
+    const c=document.createElement("canvas"); c.width=256; c.height=96; const x=c.getContext("2d");
+    x.font="900 54px 'PingFang TC','Microsoft JhengHei','Noto Sans TC',sans-serif"; x.textAlign="center"; x.textBaseline="middle";
+    x.lineWidth=10; x.strokeStyle="#ffffff"; x.strokeText(word,128,50); x.fillStyle=color; x.fillText(word,128,50);
+    return cache[key]=new THREE.CanvasTexture(c); }
+  function tick(dt,k,px,py,pz){
+    acc+=dt;
+    for(let i=live.length-1;i>=0;i--){ const s=live[i]; s.userData.t+=dt; const t=s.userData.t; s.position.y+=dt*1.2; s.material.opacity=Math.max(0,1-t/1.3); const sc=1+Math.min(t*3,0.4); s.scale.set(4.2*sc,1.6*sc,1);
+      if(t>1.3){ scene.remove(s); live.splice(i,1); } }
+    if(acc<GAP[k]) return; acc=0;
+    const w=WORDS[k][Math.floor(Math.random()*WORDS[k].length)];
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:tex(w,COL[k]), transparent:true, depthTest:false}));
+    s.position.set(px+(Math.random()<.5?-1:1)*(2.4+Math.random()*1.2), py-0.6+Math.random()*0.6, pz+(Math.random()-.5)*1.5); s.userData.t=0; s.renderOrder=30; scene.add(s); live.push(s);
+  }
+  return {tick};
+})();
+
+// ---- 倉鼠音效：全部用 Web Audio 即時合成（無音檔、無版權問題）----
+const SFX = (() => {
+  let on = localStorage.getItem("hv_sfx")!=="0", out=null, noiseBuf=null, kind=null, vol=1, nextT=0, timer=null, rumble=null;
+  function ensure(){
+    const c=getCtx();
+    if(!out){ out=c.createGain(); out.gain.value=0.9; out.connect(c.destination);
+      noiseBuf=c.createBuffer(1, c.sampleRate*2, c.sampleRate); const d=noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; }
+    return c;
+  }
+  function noise(t, dur, freq, q, v, type="bandpass"){
+    const c=AC, src=c.createBufferSource(), f=c.createBiquadFilter(), g=c.createGain();
+    src.buffer=noiseBuf; src.playbackRate.value=0.8+Math.random()*0.4; f.type=type; f.frequency.value=freq; f.Q.value=q;
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v*vol,t+0.005); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    src.connect(f); f.connect(g); g.connect(out); src.start(t, Math.random()*1.5); src.stop(t+dur+0.05);
+  }
+  function tone(t, f0, f1, dur, v, type="sine"){
+    const c=AC, o=c.createOscillator(), g=c.createGain();
+    o.type=type; o.frequency.setValueAtTime(f0,t); o.frequency.exponentialRampToValueAtTime(f1,t+dur);
+    g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(v*vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(out); o.start(t); o.stop(t+dur+0.05);
+  }
+  // 各種聲音的一個「單位」，回傳下一次的間隔秒數
+  const PLAY = {
+    drink(t){                                   // 咕嚕：往上滑的小水泡聲，兩三個一串
+      const n=2+Math.floor(Math.random()*2);
+      for(let i=0;i<n;i++){ const b=t+i*0.09, f=260+Math.random()*120; tone(b, f, f*2.6, 0.07, 0.22); tone(b+0.02, f*1.5, f*3.2, 0.05, 0.08, "triangle"); }
+      return 0.35+Math.random()*0.35;
+    },
+    eat(t){                                     // 喀滋：短促的高頻碎裂聲，一次咬兩下
+      for(let i=0;i<2;i++){ const b=t+i*(0.09+Math.random()*0.04); noise(b, 0.045+Math.random()*0.03, 2600+Math.random()*1800, 1.8, 0.5); noise(b, 0.03, 900, 1.2, 0.18); }
+      return 0.22+Math.random()*0.22;
+    },
+    wheel(t){                                   // 轟隆：低沉的咚咚聲（底下另有持續的轟轟聲）
+      tone(t, 95, 42, 0.32, 0.55); noise(t, 0.18, 180, 0.8, 0.35, "lowpass");
+      return 0.3+Math.random()*0.06;
+    },
+    sand(t){                                    // 沙沙：一陣陣顆粒摩擦聲
+      const n=4+Math.floor(Math.random()*5);
+      for(let i=0;i<n;i++) noise(t+i*0.025+Math.random()*0.02, 0.06+Math.random()*0.08, 3200+Math.random()*2500, 0.9, 0.16+Math.random()*0.12);
+      return 0.12+Math.random()*0.2;
+    },
+  };
+  function startRumble(){                       // 跑滾輪時持續的低頻轟轟聲（有節奏起伏）
+    const c=AC, src=c.createBufferSource(), f=c.createBiquadFilter(), g=c.createGain(), lfo=c.createOscillator(), lg=c.createGain();
+    src.buffer=noiseBuf; src.loop=true; f.type="lowpass"; f.frequency.value=140; f.Q.value=0.7;
+    g.gain.value=0.0; g.gain.linearRampToValueAtTime(0.5*vol, c.currentTime+0.4);
+    lfo.frequency.value=3.2; lg.gain.value=0.22*vol; lfo.connect(lg); lg.connect(g.gain);
+    src.connect(f); f.connect(g); g.connect(out); src.start(); lfo.start();
+    rumble={src,g,lfo};
+  }
+  function stopRumble(){ if(!rumble) return; const c=AC, r=rumble; rumble=null;
+    r.g.gain.cancelScheduledValues(c.currentTime); r.g.gain.setValueAtTime(r.g.gain.value,c.currentTime); r.g.gain.linearRampToValueAtTime(0,c.currentTime+0.3);
+    setTimeout(()=>{ try{ r.src.stop(); r.lfo.stop(); }catch(e){} }, 400); }
+  function loop(){
+    if(!kind || !AC || AC.state!=="running") return;
+    while(nextT < AC.currentTime+0.15){ nextT = Math.max(nextT, AC.currentTime) ; nextT += PLAY[kind](nextT); }
+  }
+  function setActivity(k, v){
+    vol = v;
+    if(!on || !AC || AC.state!=="running" || vol===0) k=null;
+    if(k===kind) return;
+    kind=k; stopRumble();
+    if(k){ ensure(); nextT=AC.currentTime+0.05; if(k==="wheel") startRumble(); if(!timer) timer=setInterval(loop,60); }
+  }
+  // 瀏覽器規定要先點一下畫面才能出聲
+  window.addEventListener("pointerdown", ()=>{ if(on){ ensure(); AC.resume(); } }, {passive:true});
+  return { setActivity, get on(){return on;}, set on(v){ on=v; localStorage.setItem("hv_sfx", v?"1":"0"); if(!v) setActivity(null,0); else { ensure(); AC.resume(); } } };
+})();
+$("#sfxOn").checked = SFX.on;
+$("#sfxOn").onchange = e => { SFX.on = e.target.checked; };
+
+// 共用的音訊環境（音樂與音效一起用）
+let AC=null;
+function getCtx(){ if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)(); return AC; }
 const Music = (() => {
   // 旋律（MIDI 音高，null = 休止），每格一個八分音符；和弦每小節一個
   const MEL = [76,79,84,79,76,74,72,74,  76,null,81,79,76,null,72,null,  77,81,84,81,79,77,76,77,  79,null,74,76,77,76,74,null,
@@ -1612,7 +1718,7 @@ const Music = (() => {
   let ctx=null, out=null, wet=null, playing=false, step=0, nextT=0, timer=null;
   const hz = m => 440*Math.pow(2,(m-69)/12);
   function init(){
-    ctx=new (window.AudioContext||window.webkitAudioContext)();
+    ctx=getCtx();
     out=ctx.createGain(); out.gain.value=0.0; out.connect(ctx.destination);
     // 夢幻殘響：回授延遲＋低通
     const d=ctx.createDelay(1), fb=ctx.createGain(), lp=ctx.createBiquadFilter();
